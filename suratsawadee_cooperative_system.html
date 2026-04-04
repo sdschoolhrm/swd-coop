@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สหกรณ์ออมทรัพย์สุรัสวดี</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Sarabun', 'Segoe UI', sans-serif; background: #f0ede8; min-height: 100vh; }
+:root {
+  --green: #1a6b4a; --green-d: #145a3c; --green-light: #e8f5ef;
+  --amber: #d97706; --amber-light: #fef9c3;
+  --red: #dc2626; --red-light: #fee2e2;
+  --blue: #2563eb; --blue-light: #dbeafe;
+  --bg: #ffffff; --bg2: #f5f3ee; --bg3: #f0ede8;
+  --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+  --t1: #1c1c1a; --t2: #666660; --t3: #999992;
+  --r: 10px; --r2: 14px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e1b; --bg2: #272724; --bg3: #181816;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+    --t1: #e8e5de; --t2: #9c9a92; --t3: #66645e;
+    --green-light: #0e2e1c; --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  body { background: var(--bg3); }
+}
+.app { max-width: 680px; margin: 0 auto; background: var(--bg); min-height: 100vh; box-shadow: var(--shadow); }
+.topbar { background: var(--green); padding: 0 18px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.topbar-logo { width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.topbar-title { color: #fff; font-size: 14px; font-weight: 600; }
+.topbar-sub { color: rgba(255,255,255,0.65); font-size: 11px; margin-top: 1px; }
+.sync-badge { font-size: 11px; padding: 4px 12px; border-radius: 99px; background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); cursor: pointer; transition: background .15s; white-space: nowrap; }
+.sync-badge:hover { background: rgba(255,255,255,0.25); }
+.sync-badge.syncing { animation: pulse 1s infinite; }
+.sync-badge.err { background: rgba(220,38,38,0.5); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+#config-banner { background: #fffbeb; border-bottom: 1px solid #fbbf24; padding: 10px 16px; font-size: 12px; color: #92400e; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#config-banner input { flex: 1; min-width: 200px; font-size: 12px; border: 1px solid #fbbf24; border-radius: 6px; padding: 5px 8px; background: #fff; color: #1c1c1a; font-family: monospace; margin: 0; }
+#config-banner button { font-size: 11px; padding: 5px 14px; border-radius: 6px; background: #d97706; color: #fff; border: none; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.nav { display: flex; border-bottom: 0.5px solid var(--border); background: var(--bg2); overflow-x: auto; position: sticky; top: 0; z-index: 20; }
+.nav::-webkit-scrollbar { display: none; }
+.nav-btn { flex: 1; min-width: 72px; padding: 9px 4px 8px; font-size: 11px; border: none; background: transparent; cursor: pointer; color: var(--t2); border-bottom: 2px solid transparent; transition: all .15s; font-family: inherit; white-space: nowrap; }
+.nav-btn.active { color: var(--green); border-bottom-color: var(--green); background: var(--bg); font-weight: 600; }
+.nav-icon { font-size: 17px; display: block; margin-bottom: 2px; }
+.panel { display: none; padding: 14px 16px 40px; }
+.panel.active { display: block; }
+.card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--r2); padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.card-hd { font-size: 13px; font-weight: 600; color: var(--t2); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dg{background:#16a34a}.da{background:var(--amber)}.dr{background:var(--red)}.db{background:var(--blue)}
+.stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-bottom: 14px; }
+.stat { background: var(--bg2); border-radius: var(--r); padding: 12px 10px; text-align: center; }
+.stat-lbl { font-size: 11px; color: var(--t2); }
+.stat-val { font-size: 18px; font-weight: 700; color: var(--t1); margin-top: 3px; }
+.stat-val.g{color:#16a34a}.stat-val.a{color:var(--amber)}.stat-val.r{color:var(--red)}
+.field-lbl { font-size: 12px; color: var(--t2); display: block; margin-bottom: 4px; }
+input[type=text],input[type=number],input[type=date],input[type=email],input[type=tel],select,textarea { width: 100%; font-family: inherit; font-size: 13px; border: 0.5px solid var(--border2); border-radius: var(--r); padding: 8px 10px; background: var(--bg); color: var(--t1); margin-bottom: 10px; outline: none; transition: border-color .15s; -webkit-appearance: none; }
+input:focus,select:focus,textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(26,107,74,.1); }
+textarea { resize: vertical; min-height: 64px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn { font-family: inherit; font-size: 13px; font-weight: 500; border: 0.5px solid var(--border2); border-radius: var(--r); padding: 9px 18px; cursor: pointer; background: var(--bg); color: var(--t1); transition: all .15s; }
+.btn:hover{background:var(--bg2)}.btn:active{transform:scale(.98)}
+.btn-p{background:var(--green);color:#fff;border-color:var(--green)}.btn-p:hover{background:var(--green-d)}
+.btn-s{background:var(--bg2);border-color:var(--border)}
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.tbl-wrap { overflow-x: auto; border-radius: var(--r); border: 0.5px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 380px; }
+th { background: var(--bg2); padding: 9px 10px; text-align: left; font-weight: 600; color: var(--t2); border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 0.5px solid var(--border); color: var(--t1); vertical-align: middle; }
+tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
+.badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.bg{background:#dcfce7;color:#15803d}.ba{background:var(--amber-light);color:#92400e}.br{background:var(--red-light);color:#991b1b}.bb{background:var(--blue-light);color:#1e40af}
+.alert { border-radius: var(--r); padding: 10px 12px; font-size: 12px; margin-bottom: 10px; display: flex; gap: 8px; align-items: flex-start; }
+.alert-a{background:#fffbeb;border:0.5px solid #fbbf24;color:#92400e}
+.alert-g{background:#f0fdf4;border:0.5px solid #86efac;color:#166534}
+.alert-i{font-size:14px;flex-shrink:0}
+.avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--green-light); color: var(--green); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.mrow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.mrow:last-child{border-bottom:none}
+.minfo .name{font-size:13px;font-weight:600;color:var(--t1)}.minfo .sub{font-size:11px;color:var(--t2);margin-top:2px}
+.sec-title { font-size: 13px; font-weight: 600; color: var(--t1); margin-bottom: 10px; padding-bottom: 7px; border-bottom: 0.5px solid var(--border); }
+.nrow { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.nrow:last-child{border-bottom:none}
+.nicon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.ni-r{background:var(--red-light)}.ni-a{background:var(--amber-light)}
+.ntxt .nt{font-size:13px;font-weight:600;color:var(--t1)}.ntxt .ns{font-size:11px;color:var(--t2);margin-top:2px}.ntxt .na{font-size:12px;color:var(--red);font-weight:600;margin-top:2px}
+.div-result { background: var(--green-light); border: 0.5px solid #6ee7b7; border-radius: var(--r2); padding: 14px 16px; margin-top: 12px; }
+.div-result .title{font-size:13px;color:var(--green);font-weight:600;margin-bottom:10px}
+.div-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.div-item .dl{font-size:11px;color:var(--t2)}.div-item .dv{font-size:14px;font-weight:600;color:var(--t1);margin-top:1px}
+#loading { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 999; opacity: 0; pointer-events: none; transition: opacity .2s; }
+#loading.show{opacity:1;pointer-events:all}
+.spinner { width: 44px; height: 44px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin{to{transform:rotate(360deg)}}
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a18; color: #fff; padding: 9px 20px; border-radius: 99px; font-size: 13px; font-weight: 500; opacity: 0; transition: all .3s; pointer-events: none; z-index: 1000; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}#toast.err{background:#991b1b}
+.empty{text-align:center;padding:24px 16px;color:var(--t2);font-size:13px}
+.empty-icon{font-size:32px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">🤝</div>
+    <div>
+      <div class="topbar-title">สหกรณ์ออมทรัพย์สุรัสวดี</div>
+      <div class="topbar-sub">iKID Plus International (Thailand)</div>
+    </div>
+  </div>
+  <div class="sync-badge" id="sync-status" onclick="syncNow()">⟳ ซิงก์</div>
+</div>
+
+<div id="config-banner">
+  <span>🔗 Apps Script URL:</span>
+  <input type="text" id="script-url" placeholder="วาง Web App URL จาก Google Apps Script ที่นี่...">
+  <button onclick="saveUrl()">บันทึก URL</button>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="go('dashboard',this)"><span class="nav-icon">📊</span>ภาพรวม</button>
+  <button class="nav-btn" onclick="go('member',this)"><span class="nav-icon">👤</span>สมาชิก</button>
+  <button class="nav-btn" onclick="go('transaction',this)"><span class="nav-icon">💰</span>ฝาก-ถอน</button>
+  <button class="nav-btn" onclick="go('loan',this)"><span class="nav-icon">📋</span>สินเชื่อ</button>
+  <button class="nav-btn" onclick="go('notify',this)"><span class="nav-icon">🔔</span>แจ้งเตือน</button>
+  <button class="nav-btn" onclick="go('dividend',this)"><span class="nav-icon">🏆</span>เงินปันผล</button>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="tab-dashboard" class="panel active">
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-lbl">สมาชิก</div><div class="stat-val" id="s-members">–</div></div>
+    <div class="stat"><div class="stat-lbl">ทุนหุ้นรวม</div><div class="stat-val g" id="s-shares">–</div></div>
+    <div class="stat"><div class="stat-lbl">หนี้คงค้าง</div><div class="stat-val a" id="s-debt">–</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="dot dr"></span>ค้างชำระ</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>ชื่อ</th><th>ยอดค้าง</th><th>ครบกำหนด</th><th>สถานะ</th></tr></thead>
+      <tbody id="dash-overdue"></tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="dot dg"></span>รายการล่าสุด</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>วันที่</th><th>ชื่อ</th><th>ประเภท</th><th>จำนวน</th></tr></thead>
+      <tbody id="dash-recent"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- MEMBER -->
+<div id="tab-member" class="panel">
+  <div class="sec-title">บันทึก / แก้ไขข้อมูลสมาชิก</div>
+  <div class="card">
+    <div class="row2">
+      <div><label class="field-lbl">รหัสสมาชิก *</label><input id="m-id" placeholder="SWD-001"></div>
+      <div><label class="field-lbl">คำนำหน้า</label><select id="m-pre"><option>นาย</option><option>นาง</option><option>นางสาว</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label class="field-lbl">ชื่อ *</label><input id="m-fn" placeholder="ชื่อจริง"></div>
+      <div><label class="field-lbl">นามสกุล *</label><input id="m-ln" placeholder="นามสกุล"></div>
+    </div>
+    <div class="row2">
+      <div><label class="field-lbl">เลขบัตรประชาชน</label><input id="m-cid" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17"></div>
+      <div><label class="field-lbl">วันเกิด</label><input type="date" id="m-dob"></div>
+    </div>
+    <div class="row2">
+      <div><label class="field-lbl">แผนก</label>
+        <select id="m-dept"><option>ครูประจำชั้น</option><option>ครูต่างชาติ</option><option>ฝ่ายธุรการ</option><option>ฝ่ายการเงิน</option><option>ฝ่ายทั่วไป</option><option>ผู้บริหาร</option></select>
+      </div>
+      <div><label class="field-lbl">สาขา</label>
+        <select id="m-branch"><option>สุรัสวดีไพโรจน์</option><option>สุรัสวดีขอนแก่น</option><option>สุรัสวดีร้อยเอ็ด 1</option><option>สุรัสวดีร้อยเอ็ด 2</option></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div><label class="field-lbl">เบอร์โทร</label><input type="tel" id="m-phone" placeholder="08X-XXX-XXXX"></div>
+      <div><label class="field-lbl">Line ID</label><input id="m-line" placeholder="@lineid"></div>
+    </div>
+    <label class="field-lbl">อีเมล</label><input type="email" id="m-email" placeholder="xxx@swd-school.com">
+    <div class="row2">
+      <div><label class="field-lbl">วันที่เข้าเป็นสมาชิก</label><input type="date" id="m-join"></div>
+      <div><label class="field-lbl">หุ้นเริ่มต้น (บาท)</label><input type="number" id="m-shares" placeholder="0" min="0"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="saveMember()">💾 บันทึกสู่ Google Sheets</button>
+      <button class="btn btn-s" onclick="clearMember()">ล้างฟอร์ม</button>
+    </div>
+  </div>
+  <div class="sec-title">รายชื่อสมาชิกทั้งหมด (<span id="m-count">0</span> คน)</div>
+  <div class="card"><div id="member-list"><div class="empty"><div class="empty-icon">👥</div>ยังไม่มีข้อมูล — กด ⟳ ซิงก์เพื่อโหลด</div></div></div>
+</div>
+
+<!-- TRANSACTION -->
+<div id="tab-transaction" class="panel">
+  <div class="sec-title">บันทึกรายการฝาก-ถอนหุ้น</div>
+  <div class="card">
+    <label class="field-lbl">เลือกสมาชิก *</label>
+    <select id="tx-m" onchange="onSelMember('tx-m','tx-info','tx-info-txt')"><option value="">-- เลือกสมาชิก --</option></select>
+    <div id="tx-info" class="alert alert-g" style="display:none"><span class="alert-i">ℹ️</span><div id="tx-info-txt"></div></div>
+    <label class="field-lbl">ประเภทรายการ</label>
+    <select id="tx-type"><option value="ฝากหุ้น">ฝากหุ้น</option><option value="ถอนหุ้น">ถอนหุ้น</option><option value="ชำระเงินกู้">ชำระเงินกู้</option></select>
+    <div class="row2">
+      <div><label class="field-lbl">จำนวนเงิน (บาท) *</label><input type="number" id="tx-amt" placeholder="0" min="0"></div>
+      <div><label class="field-lbl">วันที่ทำรายการ</label><input type="date" id="tx-date"></div>
+    </div>
+    <label class="field-lbl">บันทึกโดย</label><input id="tx-by" placeholder="ชื่อผู้บันทึก">
+    <label class="field-lbl">หมายเหตุ</label><textarea id="tx-note" placeholder="หมายเหตุ (ถ้ามี)"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="saveTx()">💾 บันทึกรายการ</button>
+      <button class="btn btn-s" onclick="clearTx()">ล้าง</button>
+    </div>
+  </div>
+  <div class="sec-title">ประวัติรายการ</div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table>
+    <thead><tr><th>วันที่</th><th>ชื่อ</th><th>ประเภท</th><th>จำนวน</th><th>หมายเหตุ</th></tr></thead>
+    <tbody id="tx-history"></tbody>
+  </table></div></div>
+</div>
+
+<!-- LOAN -->
+<div id="tab-loan" class="panel">
+  <div class="sec-title">บันทึกการกู้เงิน</div>
+  <div class="card">
+    <label class="field-lbl">เลือกสมาชิก *</label>
+    <select id="ln-m"><option value="">-- เลือกสมาชิก --</option></select>
+    <div class="row2">
+      <div><label class="field-lbl">วงเงินกู้ (บาท) *</label><input type="number" id="ln-amt" placeholder="0" min="0" oninput="calcLoan()"></div>
+      <div><label class="field-lbl">ดอกเบี้ย (%/ปี)</label><input type="number" id="ln-rate" value="6" step="0.5" oninput="calcLoan()"></div>
+    </div>
+    <div class="row2">
+      <div><label class="field-lbl">จำนวนงวด (เดือน)</label><input type="number" id="ln-term" placeholder="12" min="1" oninput="calcLoan()"></div>
+      <div><label class="field-lbl">วันที่กู้</label><input type="date" id="ln-date"></div>
+    </div>
+    <label class="field-lbl">วัตถุประสงค์</label><textarea id="ln-purpose" placeholder="ระบุวัตถุประสงค์ในการกู้เงิน"></textarea>
+    <div id="ln-calc" class="alert alert-a" style="display:none"><span class="alert-i">💡</span><div id="ln-calc-txt"></div></div>
+    <div class="btn-row">
+      <button class="btn btn-s" onclick="calcLoan()">คำนวนงวดชำระ</button>
+      <button class="btn btn-p" onclick="saveLoan()">💾 บันทึกการกู้</button>
+    </div>
+  </div>
+  <div class="sec-title">ทะเบียนสินเชื่อ</div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table>
+    <thead><tr><th>สมาชิก</th><th>วงเงิน</th><th>คงค้าง</th><th>งวด</th><th>สถานะ</th></tr></thead>
+    <tbody id="loan-list"></tbody>
+  </table></div></div>
+</div>
+
+<!-- NOTIFY -->
+<div id="tab-notify" class="panel">
+  <div class="sec-title">ระบบแจ้งเตือนยอดชำระหนี้</div>
+  <div class="card">
+    <div class="card-hd"><span class="dot dr"></span>ค้างชำระเกินกำหนด</div>
+    <div id="ov-list"><div class="empty"><div class="empty-icon">✅</div>ไม่มีรายการค้างชำระ</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="dot da"></span>ใกล้ครบกำหนด (7 วัน)</div>
+    <div id="up-list"><div class="empty"><div class="empty-icon">🔔</div>ไม่มีรายการใกล้ครบกำหนด</div></div>
+  </div>
+  <div class="card">
+    <div class="sec-title" style="border:none;margin-bottom:8px">ส่งการแจ้งเตือน</div>
+    <label class="field-lbl">เลือกสมาชิก</label>
+    <select id="nf-m"><option value="">-- เลือกสมาชิก --</option></select>
+    <label class="field-lbl">ช่องทาง</label>
+    <select id="nf-ch"><option>Line</option><option>SMS</option><option>อีเมล</option><option>แจ้งตัวเอง</option></select>
+    <label class="field-lbl">ข้อความ</label>
+    <textarea id="nf-msg" rows="5" placeholder="ข้อความแจ้งเตือน..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-s" onclick="genMsg()">✨ สร้างข้อความอัตโนมัติ</button>
+      <button class="btn btn-p" onclick="sendNotify()">ส่งการแจ้งเตือน</button>
+    </div>
+  </div>
+</div>
+
+<!-- DIVIDEND -->
+<div id="tab-dividend" class="panel">
+  <div class="sec-title">คำนวนเงินปันผลประจำปี</div>
+  <div class="card">
+    <div class="row2">
+      <div><label class="field-lbl">ปีบัญชี (พ.ศ.)</label><input type="number" id="dv-year" value="2568"></div>
+      <div><label class="field-lbl">กำไรสุทธิ (บาท)</label><input type="number" id="dv-profit" placeholder="0"></div>
+    </div>
+    <div class="row2">
+      <div><label class="field-lbl">อัตราปันผลตามหุ้น (%)</label><input type="number" id="dv-rate" value="5" step="0.5"></div>
+      <div><label class="field-lbl">สัดส่วนปันผลตามงาน (%)</label><input type="number" id="dv-work" value="20" step="1"></div>
+    </div>
+    <div class="row2">
+      <div><label class="field-lbl">สำรองตามกฎหมาย (%)</label><input type="number" id="dv-res" value="10" step="1"></div>
+      <div><label class="field-lbl">สำรองอื่นๆ (%)</label><input type="number" id="dv-other" value="5" step="1"></div>
+    </div>
+    <label class="field-lbl">ทุนเรือนหุ้นรวม (บาท) <span style="font-size:10px;color:var(--t3)">(อัตโนมัติจากระบบ)</span></label>
+    <input type="number" id="dv-total" placeholder="0" readonly style="background:var(--bg2)">
+    <div class="btn-row"><button class="btn btn-p" onclick="calcDiv()">🏆 คำนวนเงินปันผล</button></div>
+    <div id="dv-result"></div>
+  </div>
+  <div class="sec-title">ตารางปันผลรายสมาชิก</div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table>
+    <thead><tr><th>ชื่อ</th><th>หุ้นสะสม</th><th>ปันผลหุ้น</th><th>ปันผลงาน</th><th>รวม</th></tr></thead>
+    <tbody id="dv-table"></tbody>
+  </table></div></div>
+</div>
+
+</div>
+<div id="loading"><div class="spinner"></div></div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let SCRIPT_URL = localStorage.getItem('swd_script_url') || '';
+if (SCRIPT_URL) { $('script-url').value = SCRIPT_URL; $('config-banner').style.display = 'none'; }
+
+// State with localStorage cache
+let S = {
+  members:      JSON.parse(localStorage.getItem('swd_m')  || '[]'),
+  transactions: JSON.parse(localStorage.getItem('swd_tx') || '[]'),
+  loans:        JSON.parse(localStorage.getItem('swd_ln') || '[]'),
+};
+
+function persist() {
+  localStorage.setItem('swd_m',  JSON.stringify(S.members));
+  localStorage.setItem('swd_tx', JSON.stringify(S.transactions));
+  localStorage.setItem('swd_ln', JSON.stringify(S.loans));
+}
+
+// URL setup
+function saveUrl() {
+  SCRIPT_URL = $('script-url').value.trim();
+  if (!SCRIPT_URL) { toast('กรุณาวาง URL ก่อน', 1); return; }
+  localStorage.setItem('swd_script_url', SCRIPT_URL);
+  $('config-banner').style.display = 'none';
+  toast('บันทึก URL แล้ว — กำลังโหลด...');
+  syncNow();
+}
+
+// Sync indicator
+function setSyncBadge(s) {
+  const el = $('sync-status');
+  if (s==='ing') { el.textContent='⟳ กำลังซิงก์...'; el.className='sync-badge syncing'; }
+  else if (s==='ok') { el.textContent='✓ ซิงก์แล้ว'; el.className='sync-badge'; }
+  else { el.textContent='✕ ออฟไลน์'; el.className='sync-badge err'; }
+}
+
+// API
+async function api(action, data={}) {
+  if (!SCRIPT_URL) { toast('กรุณาตั้งค่า Apps Script URL ก่อน', 1); return null; }
+  showLoading(1);
+  try {
+    const r = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({action, data}) });
+    const j = await r.json();
+    showLoading(0);
+    if (!j.ok) throw new Error(j.error);
+    return j.data;
+  } catch(e) {
+    showLoading(0); setSyncBadge('err');
+    toast('เชื่อมต่อไม่ได้: '+e.message, 1); return null;
+  }
+}
+
+async function syncNow() {
+  if (!SCRIPT_URL) return;
+  setSyncBadge('ing');
+  const d = await api('getAll');
+  if (!d) return;
+  S.members = (d.members||[]).map(r=>({
+    id: r['รหัสสมาชิก']||'', prefix: r['คำนำหน้า']||'',
+    fname: r['ชื่อ']||'', lname: r['นามสกุล']||'',
+    dept: r['แผนก']||'', branch: r['สาขา']||'',
+    phone: r['เบอร์โทร']||'', line: r['Line ID']||'',
+    email: r['อีเมล']||'', joined: r['วันที่เข้า']||'',
+    shares: parseFloat(r['หุ้นสะสม (บาท)'])||0,
+  }));
+  S.transactions = (d.transactions||[]).map(r=>({
+    date: r['วันที่']||'', mid: r['รหัสสมาชิก']||'',
+    name: r['ชื่อ-สกุล']||'', type: r['ประเภท']||'',
+    amount: parseFloat(r['จำนวน (บาท)'])||0, note: r['หมายเหตุ']||'',
+  }));
+  S.loans = (d.loans||[]).map(r=>({
+    loanId: r['รหัสการกู้']||'', mid: r['รหัสสมาชิก']||'',
+    name: r['ชื่อ-สกุล']||'', amount: parseFloat(r['วงเงิน (บาท)'])||0,
+    outstanding: parseFloat(r['ยอดคงค้าง (บาท)'])||0,
+    rate: parseFloat(r['ดอกเบี้ย (%/ปี)'])||6,
+    term: parseInt(r['จำนวนงวด'])||12,
+    date: r['วันที่กู้']||'', dueDate: r['วันครบกำหนด']||'',
+    purpose: r['วัตถุประสงค์']||'', status: r['สถานะ']||'กำลังผ่อน',
+  }));
+  persist(); setSyncBadge('ok'); renderAll();
+  toast('ซิงก์จาก Google Sheets สำเร็จ ✓');
+}
+
+// Helpers
+function fullName(m){ return m.prefix+m.fname+' '+m.lname; }
+function getMember(id){ return S.members.find(m=>m.id===id); }
+function fmt(n){ return '฿'+Math.round(n).toLocaleString('th'); }
+function fmtS(n){ return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':String(n); }
+function today(){ return new Date().toISOString().split('T')[0]; }
+function showLoading(v){ $('loading').classList.toggle('show',!!v); }
+let _tt; function toast(msg,err=0){ const el=$('toast'); el.textContent=msg; el.className='show'+(err?' err':''); clearTimeout(_tt); _tt=setTimeout(()=>el.className='',3000); }
+function populateSel(id){ const s=$(id),c=s.value; s.innerHTML='<option value="">-- เลือกสมาชิก --</option>'+S.members.map(m=>`<option value="${m.id}">${m.id} – ${fullName(m)}</option>`).join(''); s.value=c; }
+function onSelMember(sid,iid,tid){ const m=getMember($(sid).value); const el=$(iid); if(m){el.style.display='flex';$(tid).textContent=fullName(m)+' · หุ้นสะสม '+fmt(m.shares);}else el.style.display='none'; }
+
+// Render
+function renderAll(){
+  renderDash(); renderMembers(); renderTxHistory(); renderLoans(); renderNotify(); renderDivTable();
+  ['tx-m','ln-m','nf-m'].forEach(populateSel);
+}
+
+function renderDash(){
+  const ts=S.members.reduce((s,m)=>s+m.shares,0);
+  const td=S.loans.filter(l=>l.status!=='ชำระครบ').reduce((s,l)=>s+l.outstanding,0);
+  $('s-members').textContent=S.members.length;
+  $('s-shares').textContent=fmtS(ts);
+  $('s-debt').textContent=fmtS(td);
+  const ov=S.loans.filter(l=>l.status==='ค้างชำระ');
+  $('dash-overdue').innerHTML=ov.length?ov.map(l=>`<tr><td>${l.name}</td><td style="color:var(--red)">${fmt(l.outstanding)}</td><td>${l.dueDate}</td><td><span class="badge br">${l.status}</span></td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--t2)">ไม่มีรายการค้างชำระ ✓</td></tr>';
+  const rc=[...S.transactions].reverse().slice(0,5);
+  const tc={'ฝากหุ้น':'bg','ถอนหุ้น':'ba','ชำระเงินกู้':'bb'};
+  $('dash-recent').innerHTML=rc.length?rc.map(t=>`<tr><td>${t.date}</td><td>${t.name}</td><td><span class="badge ${tc[t.type]||'ba'}">${t.type}</span></td><td>${fmt(t.amount)}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--t2)">ยังไม่มีรายการ</td></tr>';
+}
+
+function renderMembers(){
+  $('m-count').textContent=S.members.length;
+  $('member-list').innerHTML=S.members.length?S.members.map(m=>`<div class="mrow"><div class="avatar">${m.fname[0]}${m.lname[0]}</div><div class="minfo" style="flex:1"><div class="name">${fullName(m)}</div><div class="sub">${m.id} · ${m.dept} · ${m.branch}</div><div class="sub">หุ้น ${fmt(m.shares)} · ${m.phone||'–'}</div></div></div>`).join(''):'<div class="empty"><div class="empty-icon">👥</div>ยังไม่มีข้อมูล — กด ⟳ ซิงก์</div>';
+}
+
+function renderTxHistory(){
+  const tc={'ฝากหุ้น':'bg','ถอนหุ้น':'ba','ชำระเงินกู้':'bb'};
+  const rows=[...S.transactions].reverse().slice(0,30);
+  $('tx-history').innerHTML=rows.length?rows.map(t=>`<tr><td>${t.date}</td><td>${t.name}</td><td><span class="badge ${tc[t.type]||'ba'}">${t.type}</span></td><td>${fmt(t.amount)}</td><td style="color:var(--t2)">${t.note||'–'}</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--t2)">ยังไม่มีรายการ</td></tr>';
+}
+
+function renderLoans(){
+  const sm={'ชำระครบ':'bg','ค้างชำระ':'br','กำลังผ่อน':'ba'};
+  $('loan-list').innerHTML=S.loans.length?S.loans.map(l=>`<tr><td>${l.name}</td><td>${fmt(l.amount)}</td><td style="color:${l.status==='ค้างชำระ'?'var(--red)':'inherit'}">${fmt(l.outstanding)}</td><td>${l.term} งวด</td><td><span class="badge ${sm[l.status]||'ba'}">${l.status}</span></td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--t2)">ยังไม่มีข้อมูลสินเชื่อ</td></tr>';
+}
+
+function renderNotify(){
+  const ov=S.loans.filter(l=>l.status==='ค้างชำระ');
+  const up=S.loans.filter(l=>l.status==='กำลังผ่อน');
+  $('ov-list').innerHTML=ov.length?ov.map(l=>`<div class="nrow"><div class="nicon ni-r">⚠️</div><div class="ntxt" style="flex:1"><div class="nt">${l.name}</div><div class="na">ค้าง ${fmt(l.outstanding)} · ครบ ${l.dueDate}</div><div style="margin-top:6px"><button class="btn btn-s" style="font-size:11px;padding:4px 10px" onclick="quickNotify('${l.mid}')">สร้างข้อความ Line</button></div></div></div>`).join(''):'<div class="empty"><div class="empty-icon">✅</div>ไม่มีรายการค้างชำระ</div>';
+  $('up-list').innerHTML=up.length?up.map(l=>`<div class="nrow"><div class="nicon ni-a">🔔</div><div class="ntxt"><div class="nt">${l.name}</div><div class="ns">ครบกำหนด ${l.dueDate}</div><div class="na">คงเหลือ ${fmt(l.outstanding)}</div></div></div>`).join(''):'<div class="empty"><div class="empty-icon">🟡</div>ไม่มีรายการใกล้ครบกำหนด</div>';
+}
+
+function renderDivTable(){
+  $('dv-total').value=S.members.reduce((s,m)=>s+m.shares,0);
+}
+
+// Actions
+async function saveMember(){
+  const id=$('m-id').value.trim(), fn=$('m-fn').value.trim(), ln=$('m-ln').value.trim();
+  if(!id||!fn||!ln){toast('กรุณากรอกรหัส ชื่อ และนามสกุล',1);return;}
+  const d={'รหัสสมาชิก':id,'คำนำหน้า':$('m-pre').value,'ชื่อ':fn,'นามสกุล':ln,'เลขบัตร':$('m-cid').value,'วันเกิด':$('m-dob').value,'แผนก':$('m-dept').value,'สาขา':$('m-branch').value,'เบอร์โทร':$('m-phone').value,'Line ID':$('m-line').value,'อีเมล':$('m-email').value,'วันที่เข้า':$('m-join').value||today(),'หุ้นสะสม (บาท)':parseFloat($('m-shares').value)||0};
+  const r=await api('saveMember',d); if(!r)return;
+  const obj={id,prefix:d['คำนำหน้า'],fname:fn,lname:ln,dept:d['แผนก'],branch:d['สาขา'],phone:d['เบอร์โทร'],line:d['Line ID'],email:d['อีเมล'],joined:d['วันที่เข้า'],shares:d['หุ้นสะสม (บาท)']};
+  const i=S.members.findIndex(m=>m.id===id); if(i>=0)S.members[i]=obj; else S.members.push(obj);
+  persist(); renderAll(); toast(r.action==='updated'?'อัปเดตข้อมูล ✓':'เพิ่มสมาชิกใหม่ ✓'); clearMember();
+}
+
+async function saveTx(){
+  const mid=$('tx-m').value, amt=parseFloat($('tx-amt').value), type=$('tx-type').value;
+  if(!mid){toast('กรุณาเลือกสมาชิก',1);return;} if(!amt||amt<=0){toast('กรุณากรอกจำนวนเงิน',1);return;}
+  const m=getMember(mid);
+  const d={'วันที่':$('tx-date').value||today(),'รหัสสมาชิก':mid,'ชื่อ-สกุล':fullName(m),'ประเภท':type,'จำนวน (บาท)':amt,'หมายเหตุ':$('tx-note').value,'บันทึกโดย':$('tx-by').value||'ระบบ'};
+  const r=await api('saveTransaction',d); if(!r)return;
+  if(type==='ฝากหุ้น')m.shares+=amt; if(type==='ถอนหุ้น')m.shares=Math.max(0,m.shares-amt);
+  if(type==='ชำระเงินกู้'){const l=S.loans.find(l=>l.mid===mid&&l.status!=='ชำระครบ');if(l){l.outstanding=Math.max(0,l.outstanding-amt);if(l.outstanding===0)l.status='ชำระครบ';}}
+  S.transactions.push({date:d['วันที่'],mid,name:fullName(m),type,amount:amt,note:d['หมายเหตุ']});
+  persist(); renderAll(); toast('บันทึกรายการสำเร็จ ✓'); clearTx();
+}
+
+async function saveLoan(){
+  const mid=$('ln-m').value, amt=parseFloat($('ln-amt').value);
+  if(!mid){toast('กรุณาเลือกสมาชิก',1);return;} if(!amt||amt<=0){toast('กรุณากรอกวงเงิน',1);return;}
+  const m=getMember(mid), term=parseInt($('ln-term').value)||12;
+  const ld=$('ln-date').value||today(), dd=new Date(ld); dd.setMonth(dd.getMonth()+term);
+  const dueDateStr=dd.toISOString().split('T')[0];
+  const d={'รหัสสมาชิก':mid,'ชื่อ-สกุล':fullName(m),'วงเงิน (บาท)':amt,'ยอดคงค้าง (บาท)':amt,'ดอกเบี้ย (%/ปี)':parseFloat($('ln-rate').value)||6,'จำนวนงวด':term,'วันที่กู้':ld,'วันครบกำหนด':dueDateStr,'วัตถุประสงค์':$('ln-purpose').value,'สถานะ':'กำลังผ่อน'};
+  const r=await api('saveLoan',d); if(!r)return;
+  S.loans.push({loanId:r.loanId,mid,name:fullName(m),amount:amt,outstanding:amt,rate:d['ดอกเบี้ย (%/ปี)'],term,date:ld,dueDate:dueDateStr,purpose:d['วัตถุประสงค์'],status:'กำลังผ่อน'});
+  persist(); renderAll(); toast('บันทึกการกู้สำเร็จ ✓'); $('ln-m').value=''; $('ln-amt').value=''; $('ln-purpose').value=''; $('ln-calc').style.display='none';
+}
+
+function calcLoan(){
+  const P=parseFloat($('ln-amt').value)||0, r=((parseFloat($('ln-rate').value)||6)/100)/12, n=parseInt($('ln-term').value)||12;
+  if(!P){$('ln-calc').style.display='none';return;}
+  const m=r>0?P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1):P/n;
+  $('ln-calc').style.display='flex'; $('ln-calc-txt').innerHTML=`ผ่อนงวดละ <strong>${fmt(m)}</strong>/เดือน × ${n} งวด · ดอกเบี้ย ${fmt(m*n-P)} · รวม ${fmt(m*n)}`;
+}
+
+function calcDiv(){
+  const profit=parseFloat($('dv-profit').value)||0, dr=parseFloat($('dv-rate').value)||5, wr=parseFloat($('dv-work').value)||20, rr=parseFloat($('dv-res').value)||10, or2=parseFloat($('dv-other').value)||5;
+  const ts=S.members.reduce((s,m)=>s+m.shares,0);
+  const res=profit*rr/100, ores=profit*or2/100, dist=profit-res-ores;
+  const sp=dist*dr/100, wp=dist*wr/100;
+  $('dv-result').innerHTML=`<div class="div-result"><div class="title">ผลคำนวน — ปี ${$('dv-year').value}</div><div class="div-grid"><div class="div-item"><div class="dl">กำไรสุทธิ</div><div class="dv">${fmt(profit)}</div></div><div class="div-item"><div class="dl">หักสำรองรวม</div><div class="dv">${fmt(res+ores)}</div></div><div class="div-item"><div class="dl">เงินที่จ่ายได้</div><div class="dv">${fmt(dist)}</div></div><div class="div-item"><div class="dl">กองทุนปันผลหุ้น</div><div class="dv" style="color:var(--green)">${fmt(sp)}</div></div><div class="div-item"><div class="dl">กองทุนปันผลงาน</div><div class="dv" style="color:var(--blue)">${fmt(wp)}</div></div><div class="div-item"><div class="dl">ทุนหุ้นรวม</div><div class="dv">${fmt(ts)}</div></div></div></div>`;
+  const spb=ts>0?sp/ts:0, wpn=S.members.length>0?wp/S.members.length:0;
+  $('dv-table').innerHTML=S.members.length?S.members.map(m=>{const sd=m.shares*spb,wd=wpn;return`<tr><td>${fullName(m)}</td><td>${fmt(m.shares)}</td><td style="color:var(--green)">${fmt(sd)}</td><td style="color:var(--blue)">${fmt(wd)}</td><td style="font-weight:700">${fmt(sd+wd)}</td></tr>`;}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--t2)">ยังไม่มีสมาชิก</td></tr>';
+}
+
+function genMsg(){
+  const mid=$('nf-m').value, m=getMember(mid);
+  if(!m){toast('กรุณาเลือกสมาชิก',1);return;}
+  const l=S.loans.find(l=>l.mid===mid&&l.status!=='ชำระครบ');
+  $('nf-msg').value=l?`เรียน ${fullName(m)}\n\nสหกรณ์ออมทรัพย์สุรัสวดีขอแจ้งให้ทราบว่า\nท่านมียอดชำระเงินกู้คงค้าง\n\n💰 ยอดคงค้าง: ${fmt(l.outstanding)}\n📅 ครบกำหนด: ${l.dueDate}\n\nกรุณาติดต่อฝ่ายการเงินเพื่อดำเนินการชำระ\nขอบคุณครับ/ค่ะ\nสหกรณ์ออมทรัพย์สุรัสวดี`:`เรียน ${fullName(m)}\n\nท่านไม่มียอดค้างชำระในขณะนี้\nขอบคุณครับ/ค่ะ\nสหกรณ์ออมทรัพย์สุรัสวดี`;
+}
+
+function sendNotify(){ if(!$('nf-m').value){toast('กรุณาเลือกสมาชิก',1);return;} if(!$('nf-msg').value){toast('กรุณาพิมพ์ข้อความ',1);return;} toast(`ส่งผ่าน ${$('nf-ch').value} เรียบร้อย ✓`); $('nf-msg').value=''; }
+function quickNotify(mid){ populateSel('nf-m'); $('nf-m').value=mid; genMsg(); go('notify',document.querySelectorAll('.nav-btn')[4]); }
+function clearMember(){ ['m-id','m-fn','m-ln','m-cid','m-phone','m-line','m-email','m-shares'].forEach(id=>{const el=$(id);if(el)el.value='';}); $('m-join').value=today(); }
+function clearTx(){ $('tx-m').value=''; $('tx-amt').value=''; $('tx-note').value=''; $('tx-by').value=''; $('tx-info').style.display='none'; }
+
+function go(tab,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  $('tab-'+tab).classList.add('active'); if(btn)btn.classList.add('active');
+  if(tab==='transaction'){populateSel('tx-m');renderTxHistory();}
+  if(tab==='loan'){populateSel('ln-m');renderLoans();}
+  if(tab==='notify'){populateSel('nf-m');renderNotify();}
+  if(tab==='dividend')renderDivTable();
+}
+
+// Init
+$('tx-date').value=today(); $('ln-date').value=today(); $('m-join').value=today();
+renderAll();
+if(SCRIPT_URL)syncNow();
+</script>
+</body>
+</html>
