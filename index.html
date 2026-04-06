@@ -186,10 +186,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
       <div><label class="fl">แผนก (พิมพ์เอง)</label><input id="mDept" type="text" placeholder="เช่น ครูประจำชั้น"></div>
       <div><label class="fl">สาขา (พิมพ์เอง)</label><input id="mBranch" type="text" placeholder="เช่น สุรัสวดีไพโรจน์"></div>
     </div>
-    <div class="r2">
-      <div><label class="fl">เบอร์โทร</label><input id="mPhone" type="tel" placeholder="08X-XXX-XXXX"></div>
-      <div><label class="fl">Line ID</label><input id="mLine" type="text" placeholder="@lineid"></div>
-    </div>
+    <label class="fl">เบอร์โทร</label><input id="mPhone" type="tel" placeholder="08X-XXX-XXXX">
     <div class="r2">
       <div><label class="fl">วันที่เข้าเป็นสมาชิก</label><input id="mJoin" type="date"></div>
       <div><label class="fl">หุ้นเริ่มต้น (บาท)</label><input id="mShares" type="number" placeholder="0" min="0"></div>
@@ -260,7 +257,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
   </div>
   <div class="st">ทะเบียนสินเชื่อ</div>
   <div class="card" style="padding:0"><div class="tw"><table>
-    <thead><tr><th>สมาชิก</th><th>วงเงิน</th><th>คงค้าง</th><th>ดอก%/ด.</th><th>งวดแรกครบ</th><th>สถานะ</th></tr></thead>
+    <thead><tr><th>สมาชิก</th><th>วงเงิน</th><th>คงค้าง</th><th>ดอก%/ด.</th><th>งวดแรกครบ</th><th>สถานะ</th><th></th></tr></thead>
     <tbody id="lnList"></tbody>
   </table></div></div>
 </div>
@@ -333,16 +330,35 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
       <div><label class="fl">แผนก</label><input id="emDept" type="text"></div>
       <div><label class="fl">สาขา</label><input id="emBranch" type="text"></div>
     </div>
-    <div class="r2">
-      <div><label class="fl">เบอร์โทร</label><input id="emPhone" type="tel"></div>
-      <div><label class="fl">Line ID</label><input id="emLine" type="text"></div>
-    </div>
+    <label class="fl">เบอร์โทร</label><input id="emPhone" type="tel">
     <label class="fl">หุ้นสะสม (บาท)</label>
     <input id="emShares" type="number" min="0">
     <div class="brow" style="margin-top:8px">
       <button class="btn btnp" id="saveEditBtn">💾 บันทึก</button>
       <button class="btn btnr" id="deleteBtn">🗑 ลบสมาชิก</button>
       <button class="btn btns" id="closeModalBtn">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOAN MANAGE MODAL -->
+<div id="loanModal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:center;justify-content:center;padding:16px">
+  <div class="modal-box">
+    <div class="modal-title">u2699ufe0f จัดการสินเชื่อ</div>
+    <div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:12px">
+      <div id="lmInfo" style="color:var(--t1);font-size:13px;font-weight:600;margin-bottom:2px"></div>
+      <div id="lmSub" style="font-size:11px;color:var(--t2)"></div>
+    </div>
+    <label class="fl">ยอดคงค้าง (บาท)</label>
+    <input id="lmOutstanding" type="number" min="0" step="0.01">
+    <label class="fl">สถานะ</label>
+    <select id="lmStatus"><option value="กำลังผ่อน">กำลังผ่อน</option><option value="ค้างชำระ">ค้างชำระ</option><option value="ชำระครบ">ชำระครบ</option></select>
+    <label class="fl">หมายเหตุการแก้ไข</label>
+    <input id="lmNote" type="text" placeholder="เช่น แก้ไขยอดผิดพลาด">
+    <div class="brow" style="margin-top:8px">
+      <button class="btn btnp" id="saveLoanEditBtn">ud83dudcbe บันทึก</button>
+      <button class="btn btnr" id="deleteLoanBtn">ud83duddd1 ลบสินเชื่อ</button>
+      <button class="btn btns" id="closeLoanModalBtn">ยกเลิก</button>
     </div>
   </div>
 </div>
@@ -466,7 +482,7 @@ function doSync(){
     var d=res.data||{};
     S.members=((d.members)||[]).map(function(r){
       return{id:String(r['รหัสสมาชิก']||''),prefix:r['คำนำหน้า']||'',fname:r['ชื่อ']||'',lname:r['นามสกุล']||'',
-        dept:r['แผนก']||'',branch:r['สาขา']||'',phone:r['เบอร์โทร']||'',line:r['Line ID']||'',
+        dept:r['แผนก']||'',branch:r['สาขา']||'',phone:r['เบอร์โทร']||'',
         joined:r['วันที่เข้า']||'',shares:parseFloat(r['หุ้นสะสม (บาท)'])||0};
     });
     S.transactions=((d.transactions)||[]).map(function(r){
@@ -618,13 +634,18 @@ function renderTxHist(){
 function renderLoans(){
   var sm={'ชำระครบ':'bg-badge','ค้างชำระ':'br-badge','กำลังผ่อน':'ba-badge'};
   si('lnList',S.loans.length
-    ?S.loans.map(function(l){
-      return'<tr><td>'+l.name+'</td><td>'+fmt(l.amount)+'</td>'+
+    ?S.loans.map(function(l,i){
+      return'<tr>'+
+        '<td>'+l.name+'</td>'+
+        '<td>'+fmt(l.amount)+'</td>'+
         '<td style="color:'+(l.status==='ค้างชำระ'?'var(--rd)':l.status==='ชำระครบ'?'var(--g)':'inherit')+';font-weight:600">'+fmt(l.outstanding)+'</td>'+
-        '<td>'+l.rate+'%</td><td>'+formatThaiDate(l.dueDate)+'</td>'+
-        '<td><span class="badge '+(sm[l.status]||'ba-badge')+'">'+l.status+'</span></td></tr>';
+        '<td>'+l.rate+'%</td>'+
+        '<td>'+formatThaiDate(l.dueDate)+'</td>'+
+        '<td><span class="badge '+(sm[l.status]||'ba-badge')+'">'+l.status+'</span></td>'+
+        '<td><button class="btn btns" style="font-size:11px;padding:3px 8px;white-space:nowrap" data-action="manageLoan" data-idx="'+i+'">⚙️ แก้ไข</button></td>'+
+        '</tr>';
     }).join('')
-    :'<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มีข้อมูลสินเชื่อ</td></tr>');
+    :'<tr><td colspan="7" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มีข้อมูลสินเชื่อ</td></tr>');
 }
 
 function renderNotify(){
@@ -662,12 +683,12 @@ g('saveMemberBtn').addEventListener('click',function(){
   var data={
     'รหัสสมาชิก':id,'คำนำหน้า':v('mPre'),'ชื่อ':fn,'นามสกุล':ln,
     'เลขบัตร':v('mCid'),'วันเกิด':v('mDob'),'แผนก':v('mDept'),'สาขา':v('mBranch'),
-    'เบอร์โทร':v('mPhone'),'Line ID':v('mLine'),'อีเมล':'',
+    'เบอร์โทร':v('mPhone'),'Line ID':'','อีเมล':'',
     'วันที่เข้า':v('mJoin')||today(),'หุ้นสะสม (บาท)':shares
   };
   apiPost('saveMember',data,function(res){
     var obj={id:id,prefix:v('mPre'),fname:fn,lname:ln,dept:v('mDept'),branch:v('mBranch'),
-      phone:v('mPhone'),line:v('mLine'),joined:v('mJoin')||today(),shares:shares};
+      phone:v('mPhone'),joined:v('mJoin')||today(),shares:shares};
     var idx=-1;S.members.forEach(function(m,i){if(m.id===id)idx=i;});
     if(idx>=0)S.members[idx]=obj;else S.members.push(obj);
     persist();renderAll();
@@ -677,7 +698,7 @@ g('saveMemberBtn').addEventListener('click',function(){
 });
 
 g('clearMemberBtn').addEventListener('click',function(){
-  ['mId','mFn','mLn','mCid','mPhone','mLine','mShares','mDept','mBranch','mDob'].forEach(function(id){sv(id,'');});
+  ['mId','mFn','mLn','mCid','mPhone','mShares','mDept','mBranch','mDob'].forEach(function(id){sv(id,'');});
   sv('mJoin',today());sv('mPre','นาย');
 });
 
@@ -885,12 +906,12 @@ g('saveEditBtn').addEventListener('click',function(){
   var shares=parseFloat(v('emShares'))||0;
   var data={
     'รหัสสมาชิก':_editId,'คำนำหน้า':v('emPre'),'ชื่อ':fn,'นามสกุล':ln,'เลขบัตร':'','วันเกิด':'',
-    'แผนก':v('emDept'),'สาขา':v('emBranch'),'เบอร์โทร':v('emPhone'),'Line ID':v('emLine'),
+    'แผนก':v('emDept'),'สาขา':v('emBranch'),'เบอร์โทร':v('emPhone'),'Line ID':'',
     'อีเมล':'','วันที่เข้า':'','หุ้นสะสม (บาท)':shares
   };
   apiPost('saveMember',data,function(){
     var idx=-1;S.members.forEach(function(m,i){if(m.id===_editId)idx=i;});
-    if(idx>=0){var m=S.members[idx];m.prefix=v('emPre');m.fname=fn;m.lname=ln;m.dept=v('emDept');m.branch=v('emBranch');m.phone=v('emPhone');m.line=v('emLine');m.shares=shares;}
+    if(idx>=0){var m=S.members[idx];m.prefix=v('emPre');m.fname=fn;m.lname=ln;m.dept=v('emDept');m.branch=v('emBranch');m.phone=v('emPhone');m.shares=shares;}
     persist();renderAll();
     var modal=g('modal');if(modal)modal.className='';
     toast('อัปเดตข้อมูลสมาชิก ✓');
@@ -908,9 +929,68 @@ g('deleteBtn').addEventListener('click',function(){
 });
 
 // ══════════════════════════════════════
+// Loan manage modal
+// ══════════════════════════════════════
+var _loanIdx = -1;
+
+function openLoanModal(idx) {
+  var l = S.loans[idx];
+  if (!l) return;
+  _loanIdx = idx;
+  var lmInfo = g('lmInfo'); if(lmInfo) lmInfo.textContent = l.name + ' · ' + fmt(l.amount);
+  var lmSub  = g('lmSub');  if(lmSub)  lmSub.textContent  = 'รหัสการกู้: ' + (l.loanId||'–') + ' · กู้เมื่อ ' + formatThaiDate(l.date);
+  sv('lmOutstanding', l.outstanding);
+  sv('lmStatus', l.status);
+  sv('lmNote', '');
+  var m = g('loanModal'); if(m) m.style.display = 'flex';
+}
+
+g('closeLoanModalBtn').addEventListener('click', function(){
+  var m = g('loanModal'); if(m) m.style.display = 'none';
+});
+
+g('saveLoanEditBtn').addEventListener('click', function(){
+  if(_loanIdx < 0) return;
+  var l = S.loans[_loanIdx];
+  var newOut    = parseFloat(v('lmOutstanding')) || 0;
+  var newStatus = v('lmStatus');
+  var data = {
+    'รหัสการกู้':        l.loanId,
+    'ยอดคงค้าง (บาท)':  newOut,
+    'สถานะ':             newStatus
+  };
+  apiPost('updateLoan', data, function(){
+    S.loans[_loanIdx].outstanding = newOut;
+    S.loans[_loanIdx].status      = newStatus;
+    persist(); renderAll();
+    var m = g('loanModal'); if(m) m.style.display = 'none';
+    toast('อัปเดตสินเชื่อ ' + l.name + ' ✓');
+  });
+});
+
+g('deleteLoanBtn').addEventListener('click', function(){
+  if(_loanIdx < 0) return;
+  var l = S.loans[_loanIdx];
+  if(!confirm('ยืนยันลบสินเชื่อของ ' + l.name + '\nวงเงิน ' + fmt(l.amount) + ' ?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+  apiPost('deleteLoan', { loanId: l.loanId }, function(){
+    S.loans.splice(_loanIdx, 1);
+    persist(); renderAll();
+    var m = g('loanModal'); if(m) m.style.display = 'none';
+    toast('ลบสินเชื่อแล้ว');
+  });
+});
+
+// ══════════════════════════════════════
 // Event delegation (dynamic buttons)
 // ══════════════════════════════════════
 document.addEventListener('click',function(e){
+  // manage loan
+  var mb = e.target.closest('[data-action="manageLoan"]');
+  if(mb){
+    var idx = parseInt(mb.getAttribute('data-idx'));
+    openLoanModal(idx);
+    return;
+  }
   // edit member
   var eb=e.target.closest('[data-action="edit"]');
   if(eb){
@@ -919,7 +999,7 @@ document.addEventListener('click',function(e){
     _editId=id;
     sv('emId',id);sv('emPre',m.prefix||'นาย');sv('emFn',m.fname);sv('emLn',m.lname);
     sv('emDept',m.dept||'');sv('emBranch',m.branch||'');
-    sv('emPhone',m.phone||'');sv('emLine',m.line||'');sv('emShares',m.shares||0);
+    sv('emPhone',m.phone||'');sv('emShares',m.shares||0);
     var modal=g('modal');if(modal)modal.className='on';
     return;
   }
