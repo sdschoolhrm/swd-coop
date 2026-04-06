@@ -755,20 +755,28 @@ g('printBtn').addEventListener('click',function(){window.print();});
 // Loan
 // ══════════════════════════════════════
 function calcLoan(){
-  var P=parseFloat(v('lnAmt'))||0;
-  var r=(parseFloat(v('lnRate'))||0.5)/100;
-  var n=parseInt(v('lnTerm'))||12;
-  var ld=v('lnDate')||today();
-  var lc=g('lnCalc');if(!lc)return;
-  if(!P){lc.style.display='none';return;}
-  var mo=r>0?P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1):P/n;
-  var totalInt=mo*n-P;
-  var due=calcDueDate(ld);
-  lc.style.display='flex';
-  st('lnCalcTxt',
-    'ผ่อนงวดละ '+fmt(mo)+'/เดือน × '+n+' งวด\n'+
-    'ดอกเบี้ยรวม '+fmt(totalInt)+' | ยอดรวม '+fmt(mo*n)+'\n'+
-    '📅 งวดแรกครบกำหนด: '+formatThaiDate(due)
+  var P  = parseFloat(v('lnAmt'))  || 0;
+  var r  = (parseFloat(v('lnRate')) || 0.5) / 100; // %/เดือน
+  var n  = parseInt(v('lnTerm'))   || 12;
+  var ld = v('lnDate') || today();
+  var lc = g('lnCalc'); if(!lc) return;
+  if(!P){ lc.style.display='none'; return; }
+
+  // ── Flat Rate ──
+  // ดอกเบี้ยรวม = เงินต้น × อัตรา%/เดือน × จำนวนงวด
+  var totalInt = P * r * n;
+  var totalAmt = P + totalInt;
+  var mo       = totalAmt / n;          // งวดละเท่ากันทุกเดือน
+  var moP      = P / n;                 // เงินต้นต่องวด
+  var moI      = totalInt / n;          // ดอกเบี้ยต่องวด
+  var due      = calcDueDate(ld);
+
+  lc.style.display = 'flex';
+  si('lnCalcTxt',
+    '<b>Flat Rate</b> · ดอกเบี้ย '+v('lnRate')+'%/เดือน × '+n+' งวด<br>'+
+    '💵 งวดละ <b>'+fmt(mo)+'</b> (เงินต้น '+fmt(moP)+' + ดอก '+fmt(moI)+')<br>'+
+    '📊 ดอกเบี้ยรวม '+fmt(totalInt)+' | ยอดรวมทั้งสิ้น '+fmt(totalAmt)+'<br>'+
+    '📅 งวดแรกครบกำหนด: <b>'+formatThaiDate(due)+'</b>'
   );
 }
 
