@@ -590,7 +590,7 @@ function doSync(){
     S.loans=((d.loans)||[]).map(function(r){
       return{loanId:String(r['รหัสการกู้']||''),mid:String(r['รหัสสมาชิก']||''),name:r['ชื่อ-สกุล']||'',
         amount:parseFloat(r['วงเงิน (บาท)'])||0,outstanding:parseFloat(r['ยอดคงค้าง (บาท)'])||0,
-        rate:parseFloat(r['ดอกเบี้ย (%/เดือน)'])||0.5,term:parseInt(r['จำนวนงวด'])||12,
+        rate:parseFloat(r['ดอกเบี้ย (%/เดือน)']) || 0,term:parseInt(r['จำนวนงวด'])||12,
         date:r['วันที่กู้']||'',dueDate:r['วันครบงวดแรก']||'',
         purpose:r['วัตถุประสงค์']||'',status:r['สถานะ']||'กำลังผ่อน'};
     });
@@ -984,7 +984,8 @@ g('saveLoanBtn').addEventListener('click',function(){
   if(!amt||amt<=0){toast('กรุณากรอกวงเงิน',true);return;}
   var m=findM(mid);if(!m){toast('ไม่พบสมาชิก',true);return;}
   var term=parseInt(v('lnTerm'))||12;
-  var rate=parseFloat(v('lnRate'))||0.5;
+  var rateStr = v('lnRate');
+  var rate = rateStr === '' ? 0.5 : (parseFloat(rateStr) || 0);
   var ld=v('lnDate')||today();
   var due=calcDueDate(ld);
   var data={
