@@ -148,6 +148,10 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     <div class="sc"><div class="sl">รายได้อื่นๆ รวม</div><div class="sv p" id="dOther">–</div></div>
     <div class="sc"><div class="sl">ค้างชำระ (ราย)</div><div class="sv r" id="dOverdue">–</div></div>
   </div>
+  <!-- ยอดเงินคงเหลือจริง -->
+  <div style="margin-bottom:12px">
+    <button class="btn btnp" id="showBalanceBtn" style="width:100%;font-size:14px;padding:12px;border-radius:var(--r2)">&#128176; ดูยอดเงินคงเหลือจริงของสหกรณ์</button>
+  </div>
   <div class="card">
     <div class="ch"><span class="dot dr"></span>รายการค้างชำระ</div>
     <div class="tw"><table>
@@ -341,6 +345,32 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
   </div>
 </div>
 
+<!-- BALANCE MODAL -->
+<div id="balanceModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;display:none;align-items:center;justify-content:center;padding:16px">
+  <div class="modal-box" style="max-width:420px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;color:var(--t1)">&#128176; ยอดเงินคงเหลือจริง</div>
+      <div id="balBadge" style="font-size:11px;padding:3px 12px;border-radius:99px;font-weight:600"></div>
+    </div>
+    <!-- ยอดสุทธิ -->
+    <div style="text-align:center;background:var(--bg2);border-radius:var(--r2);padding:18px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--t2);margin-bottom:6px">ยอดสุทธิ (รับเข้า − จ่ายออก)</div>
+      <div id="balTotal" style="font-size:32px;font-weight:800">–</div>
+    </div>
+    <!-- รับเข้า -->
+    <div style="background:#f0fdf4;border:.5px solid #86efac;border-radius:var(--r);padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:8px">&#9650; รับเข้าทั้งหมด — <span id="balTotalIn" style="font-size:14px"></span></div>
+      <div id="balInRows"></div>
+    </div>
+    <!-- จ่ายออก -->
+    <div style="background:#fff5f5;border:.5px solid #fca5a5;border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">&#9660; จ่ายออกทั้งหมด — <span id="balTotalOut" style="font-size:14px"></span></div>
+      <div id="balOutRows"></div>
+    </div>
+    <button class="btn btns" style="width:100%" id="closeBalanceBtn">ปิด</button>
+  </div>
+</div>
+
 <!-- LOAN MANAGE MODAL -->
 <div id="loanModal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:center;justify-content:center;padding:16px">
   <div class="modal-box">
@@ -391,12 +421,7 @@ function si(id,html){var e=g(id);if(e)e.innerHTML=html;}
 function st(id,txt){var e=g(id);if(e)e.textContent=String(txt);}
 
 function fmt(n){return '฿'+Math.round(n||0).toLocaleString('th-TH');}
-function fmtS(n){
-  n=n||0;
-  if(n>=1e6)return '฿'+(n/1e6).toFixed(1)+'M';
-  if(n>=1e3)return '฿'+(n/1e3).toFixed(0)+'K';
-  return '฿'+Math.round(n).toLocaleString('th-TH');
-}
+function fmtS(n){return '฿'+Math.round(n||0).toLocaleString('th-TH');}
 function today(){return new Date().toISOString().split('T')[0];}
 function fullName(m){return (m.prefix||'')+(m.fname||'')+' '+(m.lname||'');}
 function findM(id){for(var i=0;i<S.members.length;i++){if(S.members[i].id===id)return S.members[i];}return null;}
@@ -580,13 +605,24 @@ function renderDash(){
   var saveOut=S.transactions.filter(function(t){return t.type==='ถอนหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
   var saves  =Math.max(0,saveIn-saveOut);
   // PF รวม
-  var pf=S.transactions.filter(function(t){return t.type.indexOf('Provident Fund')>=0;}).reduce(function(s,t){return s+t.amount;},0);
+  var pfStaff =S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
+  var pfSchool=S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
+  var pf=pfStaff+pfSchool;
   // รายได้อื่นๆ
   var other=S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
+  // ชำระเงินกู้รับเข้า
+  var loanIn=S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
+  // เงินกู้ที่ปล่อยออกไป (วงเงินทุกรายการ)
+  var loanOut=S.loans.reduce(function(s,l){return s+(l.amount||0);},0);
   // หนี้
   var debt=S.loans.filter(function(l){return l.status!=='ชำระครบ';}).reduce(function(s,l){return s+(l.outstanding||0);},0);
   // ค้างชำระ
   var ov=S.loans.filter(function(l){return l.status==='ค้างชำระ';});
+
+  // ══ ยอดคงเหลือจริง ══
+  var totalIn  = saveIn + pf + other + loanIn;
+  var totalOut = saveOut + loanOut;
+  var balance  = totalIn - totalOut;
 
   st('dMem',S.members.length);
   st('dSave',fmtS(saves));
@@ -594,6 +630,13 @@ function renderDash(){
   st('dDebt',fmtS(debt));
   st('dOther',fmtS(other));
   st('dOverdue',ov.length+' ราย');
+
+  // ยอดคงเหลือ — เก็บไว้ใน window เพื่อใช้ใน modal
+  window._bal = {
+    saveIn:saveIn, saveOut:saveOut, pfStaff:pfStaff, pfSchool:pfSchool,
+    other:other, loanIn:loanIn, loanOut:loanOut,
+    totalIn:totalIn, totalOut:totalOut, balance:balance
+  };
 
   // ตารางค้างชำระ
   si('dOv',ov.length
@@ -926,6 +969,57 @@ g('deleteBtn').addEventListener('click',function(){
     var modal=g('modal');if(modal)modal.className='';
     toast('ลบสมาชิกแล้ว');
   });
+});
+
+// ══════════════════════════════════════
+// Balance modal
+// ══════════════════════════════════════
+function balRow(label, amt, color) {
+  return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:.5px dashed var(--bo)">' +
+    '<span style="color:var(--t2)">' + label + '</span>' +
+    '<span style="font-weight:600;color:' + (color||'var(--t1)') + '">' + fmt(amt) + '</span>' +
+    '</div>';
+}
+
+g('showBalanceBtn').addEventListener('click', function(){
+  var b = window._bal || {};
+  var bal    = b.balance  || 0;
+  var totIn  = b.totalIn  || 0;
+  var totOut = b.totalOut || 0;
+
+  // ยอดสุทธิ
+  var balEl = g('balTotal');
+  if(balEl){ balEl.textContent = fmt(bal); balEl.style.color = bal >= 0 ? 'var(--g)' : 'var(--rd)'; }
+
+  // badge
+  var badge = g('balBadge');
+  if(badge){
+    if(bal >= 0){ badge.textContent = 'สุขภาพดี ✓'; badge.style.background = '#dcfce7'; badge.style.color = '#15803d'; }
+    else        { badge.textContent = 'ติดลบ ⚠';   badge.style.background = 'var(--rl)'; badge.style.color = 'var(--rd)'; }
+  }
+
+  // รับเข้า
+  st('balTotalIn', fmt(totIn));
+  si('balInRows',
+    balRow('ฝากหุ้น-ออมทรัพย์',   b.saveIn,   '#16a34a') +
+    balRow('PF บุคลากร',           b.pfStaff,  '#16a34a') +
+    balRow('PF โรงเรียน',          b.pfSchool, '#16a34a') +
+    balRow('รายได้อื่นๆ',           b.other,    '#16a34a') +
+    balRow('รับชำระหนี้จากสมาชิก', b.loanIn,   '#16a34a')
+  );
+
+  // จ่ายออก
+  st('balTotalOut', fmt(totOut));
+  si('balOutRows',
+    balRow('ถอนหุ้น-ออมทรัพย์',     b.saveOut, 'var(--rd)') +
+    balRow('เงินกู้ที่ปล่อยออกไป',   b.loanOut, 'var(--rd)')
+  );
+
+  var m = g('balanceModal'); if(m) m.style.display = 'flex';
+});
+
+g('closeBalanceBtn').addEventListener('click', function(){
+  var m = g('balanceModal'); if(m) m.style.display = 'none';
 });
 
 // ══════════════════════════════════════
