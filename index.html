@@ -269,12 +269,37 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
 <!-- ════════════ NOTIFY ════════════ -->
 <div id="pn-nf" class="pn">
   <div class="st">ระบบแจ้งเตือน — ชำระวันที่ 5 ของทุกเดือน</div>
+
+  <!-- ยอดติดตามประจำเดือน -->
+  <div class="card" style="border:.5px solid #6ee7b7;background:linear-gradient(135deg,#f0fdf4 0%,#fff 100%)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="ch" style="margin-bottom:0"><span class="dot dg"></span>ยอดติดตามประจำเดือน</div>
+      <div style="font-size:11px;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:99px;font-weight:600" id="nfMonthLabel"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:var(--bg2);border-radius:var(--r);padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--t2)">จำนวนผู้ต้องชำระ</div>
+        <div id="nfMonthCount" style="font-size:20px;font-weight:800;color:var(--g);margin-top:2px">–</div>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--r);padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--t2)">ยอดรวมที่ควรได้รับ</div>
+        <div id="nfMonthTotal" style="font-size:16px;font-weight:800;color:var(--g);margin-top:2px">–</div>
+      </div>
+    </div>
+    <div id="nfMonthList"></div>
+  </div>
+
+  <!-- ค้างชำระ -->
   <div class="card"><div class="ch"><span class="dot dr"></span>ค้างชำระเกินกำหนด</div>
     <div id="nfOv"><div class="empty"><div class="ei">✅</div>ไม่มีรายการค้างชำระ</div></div>
   </div>
-  <div class="card"><div class="ch"><span class="dot da"></span>กำลังผ่อนชำระ</div>
+
+  <!-- กำลังผ่อน -->
+  <div class="card"><div class="ch"><span class="dot da"></span>กำลังผ่อนชำระ — รายละเอียดรายบุคคล</div>
     <div id="nfUp"><div class="empty"><div class="ei">🔔</div>ไม่มีรายการ</div></div>
   </div>
+
+  <!-- ส่งแจ้งเตือน -->
   <div class="card">
     <div class="st" style="border:none;margin-bottom:8px">ส่งการแจ้งเตือน</div>
     <label class="fl">เลือกสมาชิก</label><select id="nfM"><option value="">-- เลือกสมาชิก --</option></select>
@@ -283,7 +308,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     <label class="fl">ข้อความ</label><textarea id="nfMsg" rows="6" placeholder="ข้อความแจ้งเตือน..."></textarea>
     <div class="brow">
       <button class="btn btns" id="genMsgBtn">✨ สร้างข้อความอัตโนมัติ</button>
-      <button class="btn btnp" id="sendNfBtn">📤 ส่งการแจ้งเตือน</button>
+      <button class="btn btnp" id="sendNfBtn">&#128228; ส่งการแจ้งเตือน</button>
     </div>
   </div>
 </div>
@@ -740,26 +765,83 @@ function renderLoans(){
 }
 
 function renderNotify(){
-  var ov=S.loans.filter(function(l){return l.status==='ค้างชำระ';});
-  var up=S.loans.filter(function(l){return l.status==='กำลังผ่อน';});
-  si('nfOv',ov.length
-    ?ov.map(function(l){
-      return'<div class="nr"><div class="nic nicr">⚠️</div><div style="flex:1">'+
-        '<div class="ntt">'+l.name+'</div>'+
-        '<div class="nta">ค้าง '+fmt(l.outstanding)+' · งวดแรก '+formatThaiDate(l.dueDate)+'</div>'+
-        '<div style="margin-top:6px"><button class="btn btns" style="font-size:11px;padding:4px 10px" data-action="quicknf" data-mid="'+l.mid+'">สร้างข้อความ Line</button></div>'+
-        '</div></div>';
-    }).join('')
-    :'<div class="empty"><div class="ei">✅</div>ไม่มีรายการค้างชำระ</div>');
-  si('nfUp',up.length
-    ?up.map(function(l){
-      return'<div class="nr"><div class="nic nica">🔔</div><div>'+
-        '<div class="ntt">'+l.name+'</div>'+
-        '<div class="nts">ชำระวันที่ 5 ของทุกเดือน | งวดแรก '+formatThaiDate(l.dueDate)+'</div>'+
-        '<div class="nta">คงเหลือ '+fmt(l.outstanding)+'</div>'+
-        '</div></div>';
-    }).join('')
-    :'<div class="empty"><div class="ei">🟡</div>ไม่มีรายการ</div>');
+  var ov = S.loans.filter(function(l){return l.status==='ค้างชำระ';});
+  var up = S.loans.filter(function(l){return l.status==='กำลังผ่อน';});
+  var now = new Date();
+  var months = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var curMonth = months[now.getMonth()] + ' ' + (now.getFullYear()+543);
+
+  // ── ยอดติดตามประจำเดือน (กำลังผ่อน + ค้างชำระ) ──
+  var allActive = S.loans.filter(function(l){return l.status!=='ชำระครบ';});
+  var monthTotal = 0;
+
+  st('nfMonthLabel', curMonth);
+  st('nfMonthCount', allActive.length + ' ราย');
+
+  si('nfMonthList', allActive.length ? (function(){
+    var rows = allActive.map(function(l){
+      // คำนวน flat rate งวดละ
+      var moP   = (l.amount||0) / (l.term||1);
+      var moI   = (l.amount||0) * ((l.rate||0)/100);
+      var mo    = moP + moI;
+      monthTotal += mo;
+      var remTerm = l.outstanding > 0 ? Math.ceil(l.outstanding / moP) : 0;
+      var isOv = l.status === 'ค้างชำระ';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid var(--bo)">' +
+        '<div style="flex:1">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--t1)">'+l.name+'</div>' +
+          '<div style="font-size:11px;color:var(--t2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">' +
+            '<span>งวด/เดือน: <b style="color:var(--g)">'+fmt(mo)+'</b></span>' +
+            '<span>คงค้าง: <b style="color:'+(isOv?'var(--rd)':'var(--am)')+'">'+fmt(l.outstanding)+'</b></span>' +
+            '<span>เหลือ ~'+remTerm+' งวด</span>' +
+            '<span>งวดแรก: '+formatThaiDate(l.dueDate)+'</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:4px;flex-shrink:0">' +
+          (isOv ? '<span style="font-size:10px;background:var(--rl);color:var(--rd);padding:2px 7px;border-radius:99px;font-weight:600;align-self:flex-start">ค้างชำระ</span>' : '') +
+          '<button class="btn btns" style="font-size:11px;padding:3px 8px" data-action="quicknf" data-mid="'+l.mid+'">Line</button>' +
+        '</div>' +
+      '</div>';
+    });
+    // อัปเดต total หลัง map
+    st('nfMonthTotal', fmt(monthTotal));
+    return rows.join('') + '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;font-weight:700;color:var(--g)">' +
+      '<span>รวมยอดที่ต้องติดตาม</span><span>'+fmt(monthTotal)+'/เดือน</span></div>';
+  })() : (function(){ st('nfMonthTotal','฿0'); st('nfMonthCount','0 ราย'); return '<div class="empty"><div class="ei">&#10003;</div>ไม่มีรายการที่ต้องติดตาม</div>'; })());
+
+  // ── ค้างชำระ ──
+  si('nfOv', ov.length
+    ? ov.map(function(l){
+        var moP = (l.amount||0)/(l.term||1);
+        var moI = (l.amount||0)*((l.rate||0)/100);
+        var mo  = moP + moI;
+        return '<div class="nr"><div class="nic nicr">&#9888;&#65039;</div><div style="flex:1">'+
+          '<div class="ntt">'+l.name+'</div>'+
+          '<div class="nts">งวด/เดือน: '+fmt(mo)+' · คงค้าง: '+fmt(l.outstanding)+'</div>'+
+          '<div class="nta">&#128197; งวดแรก '+formatThaiDate(l.dueDate)+'</div>'+
+          '<div style="margin-top:6px"><button class="btn btns" style="font-size:11px;padding:4px 10px" data-action="quicknf" data-mid="'+l.mid+'">สร้างข้อความ Line</button></div>'+
+          '</div></div>';
+      }).join('')
+    : '<div class="empty"><div class="ei">&#10003;</div>ไม่มีรายการค้างชำระ</div>');
+
+  // ── กำลังผ่อน รายละเอียด ──
+  si('nfUp', up.length
+    ? up.map(function(l){
+        var moP     = (l.amount||0)/(l.term||1);
+        var moI     = (l.amount||0)*((l.rate||0)/100);
+        var mo      = moP + moI;
+        var remTerm = l.outstanding > 0 ? Math.ceil(l.outstanding / moP) : 0;
+        return '<div class="nr"><div class="nic nica">&#128276;</div><div style="flex:1">'+
+          '<div class="ntt">'+l.name+'</div>'+
+          '<div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.8">'+
+            '&#128181; งวด/เดือน: <b style="color:var(--g)">'+fmt(mo)+'</b> (ต้น '+fmt(moP)+' + ดอก '+fmt(moI)+')<br>'+
+            '&#128202; คงค้างทั้งหมด: <b>'+fmt(l.outstanding)+'</b> · เหลือ ~<b>'+remTerm+'</b> งวด<br>'+
+            '&#128197; ครบงวดแรก: '+formatThaiDate(l.dueDate)+
+          '</div>'+
+          '<div style="margin-top:6px"><button class="btn btns" style="font-size:11px;padding:4px 10px" data-action="quicknf" data-mid="'+l.mid+'">สร้างข้อความ Line</button></div>'+
+          '</div></div>';
+      }).join('')
+    : '<div class="empty"><div class="ei">&#128337;</div>ไม่มีรายการ</div>');
 }
 
 // ══════════════════════════════════════
