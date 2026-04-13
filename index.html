@@ -379,17 +379,65 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
       <div id="lmInfo" style="color:var(--t1);font-size:13px;font-weight:600;margin-bottom:2px"></div>
       <div id="lmSub" style="font-size:11px;color:var(--t2)"></div>
     </div>
-    <label class="fl">ยอดคงค้าง (บาท)</label>
-    <input id="lmOutstanding" type="number" min="0" step="0.01">
-    <label class="fl">สถานะ</label>
-    <select id="lmStatus"><option value="กำลังผ่อน">กำลังผ่อน</option><option value="ค้างชำระ">ค้างชำระ</option><option value="ชำระครบ">ชำระครบ</option></select>
-    <label class="fl">หมายเหตุการแก้ไข</label>
-    <input id="lmNote" type="text" placeholder="เช่น แก้ไขยอดผิดพลาด">
-    <div class="brow" style="margin-top:8px">
-      <button class="btn btnp" id="saveLoanEditBtn">&#128190; บันทึก</button>
-      <button class="btn btnr" id="deleteLoanBtn">&#128465; ลบสินเชื่อ</button>
-      <button class="btn btns" id="closeLoanModalBtn">ยกเลิก</button>
+
+    <!-- แท็บ: แก้ไข / ปิดยอด -->
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button class="btn" id="lmTabEdit" style="flex:1;font-size:12px;background:var(--g);color:#fff;border-color:var(--g)">&#9998; แก้ไขยอด</button>
+      <button class="btn btns" id="lmTabClose" style="flex:1;font-size:12px">&#128274; ปิดยอดก่อนกำหนด</button>
     </div>
+
+    <!-- section: แก้ไข -->
+    <div id="lmSectionEdit">
+      <label class="fl">ยอดคงค้าง (บาท)</label>
+      <input id="lmOutstanding" type="number" min="0" step="0.01">
+      <label class="fl">สถานะ</label>
+      <select id="lmStatus"><option value="กำลังผ่อน">กำลังผ่อน</option><option value="ค้างชำระ">ค้างชำระ</option><option value="ชำระครบ">ชำระครบ</option></select>
+      <label class="fl">หมายเหตุการแก้ไข</label>
+      <input id="lmNote" type="text" placeholder="เช่น แก้ไขยอดผิดพลาด">
+      <div class="brow" style="margin-top:8px">
+        <button class="btn btnp" id="saveLoanEditBtn">&#128190; บันทึก</button>
+        <button class="btn btnr" id="deleteLoanBtn">&#128465; ลบสินเชื่อ</button>
+        <button class="btn btns" id="closeLoanModalBtn">ยกเลิก</button>
+      </div>
+    </div>
+
+    <!-- section: ปิดยอด -->
+    <div id="lmSectionClose" style="display:none">
+      <div style="background:#fffbeb;border:.5px solid #fbbf24;border-radius:var(--r);padding:12px;margin-bottom:12px;font-size:12px;color:#92400e">
+        <b>วิธีคำนวน:</b> ดอกเบี้ยงวดที่เหลือ (ไม่นับงวดปัจจุบัน) ลด 50%<br>
+        ยอดปิด = เงินต้นคงเหลือ + (ดอกเบี้ยงวดที่เหลือ × 50%)
+      </div>
+      <div class="r2" style="margin-bottom:10px">
+        <div>
+          <label class="fl">งวดที่ชำระไปแล้ว</label>
+          <input id="lmPaidTerms" type="number" min="0" placeholder="0" style="margin-bottom:0">
+        </div>
+        <div>
+          <label class="fl">งวดที่เหลือ (คำนวนอัตโนมัติ)</label>
+          <input id="lmRemTerms" type="number" readonly style="background:var(--bg2);margin-bottom:0">
+        </div>
+      </div>
+      <!-- ผลคำนวน -->
+      <div id="lmCloseCalc" style="display:none;background:#f0fdf4;border:.5px solid #86efac;border-radius:var(--r);padding:12px;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:8px;font-weight:600">ยอดปิดก่อนกำหนด</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+          <div><div style="color:var(--t2)">เงินต้นคงเหลือ</div><div id="lcPrincipal" style="font-weight:700;color:var(--t1)">–</div></div>
+          <div><div style="color:var(--t2)">ดอกเบี้ยที่เหลือ (เต็ม)</div><div id="lcIntFull" style="font-weight:700;color:var(--am)">–</div></div>
+          <div><div style="color:var(--t2)">ดอกเบี้ยลด 50%</div><div id="lcIntDisc" style="font-weight:700;color:#16a34a">–</div></div>
+          <div><div style="color:var(--t2)">ส่วนลดดอกเบี้ย</div><div id="lcIntSave" style="font-weight:700;color:#16a34a">–</div></div>
+        </div>
+        <div style="border-top:.5px solid #86efac;margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:700;color:var(--t1)">ยอดที่ต้องชำระ</span>
+          <span id="lcTotal" style="font-size:20px;font-weight:800;color:var(--g)">–</span>
+        </div>
+      </div>
+      <div class="brow">
+        <button class="btn btns" id="calcCloseBtn">&#128290; คำนวนยอดปิด</button>
+        <button class="btn btnp" id="confirmCloseBtn" style="display:none">&#10003; ยืนยันปิดยอด</button>
+        <button class="btn btns" id="cancelCloseBtn">ยกเลิก</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -820,27 +868,27 @@ g('printBtn').addEventListener('click',function(){window.print();});
 // ══════════════════════════════════════
 function calcLoan(){
   var P  = parseFloat(v('lnAmt'))  || 0;
-  var r  = (parseFloat(v('lnRate')) || 0.5) / 100; // %/เดือน
+  var rStr = v('lnRate');
+  var r  = rStr === '' ? 0.5 : (parseFloat(rStr) || 0); // ถ้าว่างใช้ default 0.5, ถ้ากรอก 0 ให้เป็น 0
   var n  = parseInt(v('lnTerm'))   || 12;
   var ld = v('lnDate') || today();
   var lc = g('lnCalc'); if(!lc) return;
   if(!P){ lc.style.display='none'; return; }
 
   // ── Flat Rate ──
-  // ดอกเบี้ยรวม = เงินต้น × อัตรา%/เดือน × จำนวนงวด
-  var totalInt = P * r * n;
+  var totalInt = P * (r/100) * n;
   var totalAmt = P + totalInt;
-  var mo       = totalAmt / n;          // งวดละเท่ากันทุกเดือน
-  var moP      = P / n;                 // เงินต้นต่องวด
-  var moI      = totalInt / n;          // ดอกเบี้ยต่องวด
+  var mo       = totalAmt / n;
+  var moP      = P / n;
+  var moI      = totalInt / n;
   var due      = calcDueDate(ld);
 
   lc.style.display = 'flex';
   si('lnCalcTxt',
-    '<b>Flat Rate</b> · ดอกเบี้ย '+v('lnRate')+'%/เดือน × '+n+' งวด<br>'+
-    '💵 งวดละ <b>'+fmt(mo)+'</b> (เงินต้น '+fmt(moP)+' + ดอก '+fmt(moI)+')<br>'+
-    '📊 ดอกเบี้ยรวม '+fmt(totalInt)+' | ยอดรวมทั้งสิ้น '+fmt(totalAmt)+'<br>'+
-    '📅 งวดแรกครบกำหนด: <b>'+formatThaiDate(due)+'</b>'
+    '<b>Flat Rate</b> · ดอกเบี้ย '+r+'%/เดือน × '+n+' งวด<br>'+
+    '&#x1F4B5; งวดละ <b>'+fmt(mo)+'</b> (เงินต้น '+fmt(moP)+(r>0?' + ดอก '+fmt(moI):' ไม่มีดอกเบี้ย')+')<br>'+
+    '&#x1F4CA; ดอกเบี้ยรวม '+fmt(totalInt)+' | ยอดรวมทั้งสิ้น '+fmt(totalAmt)+'<br>'+
+    '&#x1F4C5; งวดแรกครบกำหนด: <b>'+formatThaiDate(due)+'</b>'
   );
 }
 
@@ -1036,8 +1084,106 @@ function openLoanModal(idx) {
   sv('lmOutstanding', l.outstanding);
   sv('lmStatus', l.status);
   sv('lmNote', '');
+  // reset close section
+  sv('lmPaidTerms',''); sv('lmRemTerms','');
+  var cc = g('lmCloseCalc'); if(cc) cc.style.display='none';
+  var cb = g('confirmCloseBtn'); if(cb) cb.style.display='none';
+  // show edit tab by default
+  switchLmTab('edit');
   var m = g('loanModal'); if(m) m.style.display = 'flex';
 }
+
+function switchLmTab(tab) {
+  var ed = g('lmSectionEdit'), cl = g('lmSectionClose');
+  var btnEd = g('lmTabEdit'), btnCl = g('lmTabClose');
+  if(tab==='edit'){
+    if(ed) ed.style.display='block';
+    if(cl) cl.style.display='none';
+    if(btnEd){btnEd.style.background='var(--g)';btnEd.style.color='#fff';btnEd.style.borderColor='var(--g)';}
+    if(btnCl){btnCl.style.background='var(--bg2)';btnCl.style.color='var(--t1)';btnCl.style.borderColor='var(--bo2)';}
+  } else {
+    if(ed) ed.style.display='none';
+    if(cl) cl.style.display='block';
+    if(btnCl){btnCl.style.background='var(--am)';btnCl.style.color='#fff';btnCl.style.borderColor='var(--am)';}
+    if(btnEd){btnEd.style.background='var(--bg2)';btnEd.style.color='var(--t1)';btnEd.style.borderColor='var(--bo2)';}
+  }
+}
+
+g('lmTabEdit').addEventListener('click', function(){ switchLmTab('edit'); });
+g('lmTabClose').addEventListener('click', function(){ switchLmTab('close'); });
+
+// คำนวนงวดที่เหลืออัตโนมัติ
+g('lmPaidTerms').addEventListener('input', function(){
+  if(_loanIdx < 0) return;
+  var l = S.loans[_loanIdx];
+  var paid = parseInt(v('lmPaidTerms')) || 0;
+  var rem  = Math.max(0, (l.term||0) - paid);
+  sv('lmRemTerms', rem);
+  // ซ่อน confirm ถ้ากรอกใหม่
+  var cc = g('lmCloseCalc'); if(cc) cc.style.display='none';
+  var cb = g('confirmCloseBtn'); if(cb) cb.style.display='none';
+});
+
+// คำนวนยอดปิด
+g('calcCloseBtn').addEventListener('click', function(){
+  if(_loanIdx < 0) return;
+  var l    = S.loans[_loanIdx];
+  var paid = parseInt(v('lmPaidTerms')) || 0;
+  var rem  = Math.max(0, (l.term||0) - paid);
+  if(rem <= 0){ toast('ไม่มีงวดที่เหลือ', true); return; }
+
+  // เงินต้นต่องวด
+  var moP = (l.amount||0) / (l.term||1);
+  // เงินต้นคงเหลือ = เงินต้นต่องวด × งวดที่เหลือ
+  var principal = moP * rem;
+  // ดอกเบี้ยต่องวด (flat rate)
+  var moI = (l.amount||0) * ((l.rate||0)/100);
+  // งวดที่เหลือ ไม่นับงวดปัจจุบัน = rem - 1
+  var remExcludeCurrent = Math.max(0, rem - 1);
+  var intFull = moI * remExcludeCurrent;
+  var intDisc = intFull * 0.5;          // ลด 50%
+  var intSave = intFull - intDisc;
+  var total   = principal + intDisc;
+
+  // แสดงผล
+  st('lcPrincipal', fmt(principal));
+  st('lcIntFull',   fmt(intFull));
+  st('lcIntDisc',   fmt(intDisc));
+  st('lcIntSave',   fmt(intSave));
+  st('lcTotal',     fmt(total));
+  var cc = g('lmCloseCalc'); if(cc) cc.style.display='block';
+  var cb = g('confirmCloseBtn'); if(cb) cb.style.display='inline-block';
+
+  // เก็บยอดไว้ใช้ตอน confirm
+  window._closeTotal = total;
+});
+
+// ยืนยันปิดยอด
+g('confirmCloseBtn').addEventListener('click', function(){
+  if(_loanIdx < 0) return;
+  var l     = S.loans[_loanIdx];
+  var total = window._closeTotal || 0;
+  if(!confirm('ยืนยันปิดยอดสินเชื่อของ ' + l.name +
+    '\nยอดที่ต้องชำระ: ' + fmt(total) +
+    '\n\nระบบจะบันทึกสถานะเป็น "ชำระครบ"')) return;
+
+  var data = {
+    'รหัสการกู้':       l.loanId,
+    'ยอดคงค้าง (บาท)': 0,
+    'สถานะ':            'ชำระครบ'
+  };
+  apiPost('updateLoan', data, function(){
+    S.loans[_loanIdx].outstanding = 0;
+    S.loans[_loanIdx].status      = 'ชำระครบ';
+    persist(); renderAll();
+    var m = g('loanModal'); if(m) m.style.display = 'none';
+    toast('ปิดยอดสินเชื่อ ' + l.name + ' เรียบร้อย ✓');
+  });
+});
+
+g('cancelCloseBtn').addEventListener('click', function(){
+  var m = g('loanModal'); if(m) m.style.display = 'none';
+});
 
 g('closeLoanModalBtn').addEventListener('click', function(){
   var m = g('loanModal'); if(m) m.style.display = 'none';
