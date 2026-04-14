@@ -132,6 +132,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
   <button class="nb" data-tab="loan"><span class="ni">📋</span>สินเชื่อ</button>
   <button class="nb" data-tab="nf"><span class="ni">🔔</span>แจ้งเตือน</button>
   <button class="nb" data-tab="pf"><span class="ni">💼</span>PF</button>
+  <button class="nb" data-tab="fin"><span class="ni">📈</span>การเงิน</button>
   <button class="nb" data-tab="dv"><span class="ni">🏆</span>เงินปันผล</button>
 </nav>
 
@@ -346,6 +347,61 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
   </div>
 </div>
 
+<!-- ════════════ FINANCE ════════════ -->
+<div id="pn-fin" class="pn">
+  <div class="st">สรุปการเงินสหกรณ์</div>
+
+  <!-- 2 ยอดหลัก -->
+  <div class="r2" style="margin-bottom:12px">
+    <!-- ยอด 1: เงินสดคงเหลือ -->
+    <div class="card" style="border:.5px solid #86efac;background:linear-gradient(135deg,#f0fdf4,#fff);margin-bottom:0">
+      <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:6px">&#128181; เงินสดคงเหลือ</div>
+      <div id="finCash" style="font-size:22px;font-weight:800;color:#15803d">–</div>
+      <div style="font-size:10px;color:var(--t2);margin-top:6px;line-height:1.6">
+        รับเข้า − ถอนหุ้น<br>− เงินกู้ปล่อย − รายจ่ายทุกประเภท
+      </div>
+    </div>
+    <!-- ยอด 2: สินทรัพย์คงเหลือ -->
+    <div class="card" style="border:.5px solid #93c5fd;background:linear-gradient(135deg,#eff6ff,#fff);margin-bottom:0">
+      <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px">&#127968; สินทรัพย์คงเหลือ</div>
+      <div id="finAsset" style="font-size:22px;font-weight:800;color:#1e40af">–</div>
+      <div style="font-size:10px;color:var(--t2);margin-top:6px;line-height:1.6">
+        รับเข้า − ถอนหุ้น<br>− เงินกู้ปล่อย − รายจ่าย<br><b>(ยกเว้นลงทุนในธุรกิจ)</b>
+      </div>
+    </div>
+  </div>
+
+  <!-- กำไรสุทธิ -->
+  <div class="card" style="border:.5px solid #c4b5fd;background:linear-gradient(135deg,#f5f3ff,#fff);margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#5b21b6;margin-bottom:4px">&#128200; กำไรสุทธิ</div>
+        <div style="font-size:10px;color:var(--t2)">ดอกเบี้ยรับ − ค่าใช้จ่ายดำเนินงาน (ไม่รวมการลงทุน)</div>
+      </div>
+      <div id="finProfit" style="font-size:22px;font-weight:800;color:#5b21b6">–</div>
+    </div>
+  </div>
+
+  <!-- รับเข้า breakdown -->
+  <div class="card">
+    <div class="ch"><span class="dot dg"></span>รับเข้าทั้งหมด — <span id="finTotalIn" style="color:var(--g);font-weight:700;margin-left:4px"></span></div>
+    <div id="finInRows"></div>
+  </div>
+
+  <!-- จ่ายออก breakdown -->
+  <div class="card">
+    <div class="ch"><span class="dot dr"></span>จ่ายออกทั้งหมด — <span id="finTotalOut" style="color:var(--rd);font-weight:700;margin-left:4px"></span></div>
+    <div id="finOutRows"></div>
+  </div>
+
+  <!-- รายจ่ายออกล่าสุด -->
+  <div class="st">รายจ่ายออกล่าสุด</div>
+  <div class="card" style="padding:0"><div class="tw"><table>
+    <thead><tr><th>วันที่</th><th>ประเภท</th><th>จำนวน</th><th>ผู้อนุมัติ</th><th>หมายเหตุ</th></tr></thead>
+    <tbody id="finExpTable"></tbody>
+  </table></div></div>
+</div>
+
 <!-- ════════════ PROVIDENT FUND ════════════ -->
 <div id="pn-pf" class="pn">
   <div class="st">Provident Fund — รายบุคคล</div>
@@ -414,6 +470,43 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
 <!-- ════════════ DIVIDEND ════════════ -->
 <div id="pn-dv" class="pn">
   <div class="st">คำนวนเงินปันผลประจำปี (ตามจำนวนวัน)</div>
+
+  <!-- กำไรสุทธิจากระบบ -->
+  <div class="card" style="border:.5px solid #93c5fd;background:linear-gradient(135deg,#eff6ff,#fff);margin-bottom:12px">
+    <div style="font-size:13px;font-weight:700;color:var(--bl);margin-bottom:10px">&#128200; กำไรสุทธิจากระบบ (คำนวนอัตโนมัติ)</div>
+    <div class="sg3" style="margin-bottom:10px">
+      <div style="background:#fff;border-radius:var(--r);padding:10px;text-align:center;border:.5px solid #bfdbfe">
+        <div style="font-size:10px;color:#1e40af">ดอกเบี้ยรับรวม</div>
+        <div id="dvIntReceived" style="font-size:14px;font-weight:800;color:#1e40af;margin-top:3px">–</div>
+      </div>
+      <div style="background:#fff;border-radius:var(--r);padding:10px;text-align:center;border:.5px solid #bfdbfe">
+        <div style="font-size:10px;color:var(--rd)">ค่าใช้จ่ายดำเนินงาน<br><span style="color:#aaa">(ไม่รวมการลงทุน)</span></div>
+        <div id="dvOpExp" style="font-size:14px;font-weight:800;color:var(--rd);margin-top:3px">–</div>
+      </div>
+      <div style="background:#dbeafe;border-radius:var(--r);padding:10px;text-align:center">
+        <div style="font-size:10px;color:#1e40af;font-weight:600">กำไรสุทธิ</div>
+        <div id="dvNetProfit" style="font-size:14px;font-weight:800;color:#1e40af;margin-top:3px">–</div>
+      </div>
+    </div>
+    <!-- สไลเดอร์ % จ่ายปันผล -->
+    <label class="fl">% กำไรที่ต้องการจ่ายเป็นปันผล</label>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <input type="range" id="dvProfitPct" min="0" max="100" value="50" step="5"
+        style="flex:1;accent-color:var(--bl);cursor:pointer">
+      <div style="font-size:16px;font-weight:800;color:var(--bl);min-width:48px;text-align:right" id="dvProfitPctLabel">50%</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:var(--r);padding:10px 12px;border:.5px solid #93c5fd">
+      <span style="font-size:12px;color:var(--t2)">ยอดที่จ่ายเป็นปันผล</span>
+      <span id="dvProfitPool" style="font-size:18px;font-weight:800;color:var(--bl)">–</span>
+    </div>
+    <div style="margin-top:8px">
+      <button class="btn" style="background:var(--bl);color:#fff;border-color:var(--bl);width:100%;font-size:13px" id="useNetProfitBtn">
+        &#8594; ใช้ตัวเลขนี้เป็นกำไรสุทธิในแบบฟอร์มด้านล่าง
+      </button>
+    </div>
+  </div>
+
+  <!-- ฟอร์มกรอกเอง -->
   <div class="card">
     <div class="r2">
       <div><label class="fl">ปีบัญชี (พ.ศ.)</label><input id="dvYear" type="number" value="2568"></div>
@@ -429,7 +522,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     </div>
     <label class="fl">ทุนเรือนหุ้นรวม (อัตโนมัติ)</label>
     <input id="dvTotal" type="number" readonly style="background:var(--bg2);color:var(--t2)">
-    <div class="brow"><button class="btn btnp" id="calcDivBtn">🏆 คำนวนเงินปันผล</button></div>
+    <div class="brow"><button class="btn btnp" id="calcDivBtn">&#127942; คำนวนเงินปันผล</button></div>
     <div id="dvResult"></div>
   </div>
   <div class="st">ตารางปันผลรายสมาชิก</div>
@@ -527,14 +620,14 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     <!-- ยอดที่ 1: เงินสดคงเหลือ -->
     <div style="background:var(--bg2);border-radius:var(--r2);padding:14px;margin-bottom:10px">
       <div style="font-size:11px;color:var(--t2);margin-bottom:4px">&#128181; ยอดเงินสดคงเหลือ</div>
-      <div style="font-size:10px;color:var(--t2);margin-bottom:8px">(รับเข้าทั้งหมด − ถอนหุ้น − รายจ่ายออก) <b>ไม่หักเงินกู้</b></div>
+      <div style="font-size:10px;color:var(--t2);margin-bottom:8px">(รับเข้าทั้งหมด − ถอนหุ้น − รายจ่ายออก − เงินกู้ที่ปล่อยออก)</div>
       <div id="balCash" style="font-size:26px;font-weight:800;color:var(--g)">–</div>
     </div>
 
     <!-- ยอดที่ 2: กำไรสุทธิ -->
     <div style="background:var(--bg2);border-radius:var(--r2);padding:14px;margin-bottom:14px">
       <div style="font-size:11px;color:var(--t2);margin-bottom:4px">&#128200; กำไรสุทธิ (ดอกเบี้ยรับ − ค่าใช้จ่าย)</div>
-      <div style="font-size:10px;color:var(--t2);margin-bottom:8px">(ดอกเบี้ยจากการชำระหนี้ − รายจ่ายดำเนินงาน)</div>
+      <div style="font-size:10px;color:var(--t2);margin-bottom:8px">(ดอกเบี้ยรับ − ค่าใช้จ่ายดำเนินงาน) <b>ไม่รวมการลงทุน/ฝากธนาคาร/ซื้อสินทรัพย์</b></div>
       <div id="balProfit" style="font-size:26px;font-weight:800;color:var(--bl)">–</div>
     </div>
 
@@ -547,9 +640,6 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     <div style="background:#fff5f5;border:.5px solid #fca5a5;border-radius:var(--r);padding:12px;margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">&#9660; จ่ายออกทั้งหมด — <span id="balTotalOut"></span></div>
       <div id="balOutRows"></div>
-      <div style="font-size:10px;color:var(--t2);margin-top:8px;padding-top:8px;border-top:.5px dashed #fca5a5">
-        * เงินกู้ที่ปล่อยออกไปยังเป็นสินทรัพย์ของสหกรณ์ (ลูกหนี้) ไม่นับเป็นรายจ่ายสุทธิ
-      </div>
     </div>
     <button class="btn btns" style="width:100%" id="closeBalanceBtn">ปิด</button>
   </div>
@@ -818,9 +908,11 @@ navBtns.forEach(function(btn){
     if(tab==='loan'){renderLoans();calcLoan();}
     if(tab==='nf')renderNotify();
     if(tab==='pf')renderPF();
+    if(tab==='fin')renderFin();
     if(tab==='dv'){
       sv('dvTotal',S.members.reduce(function(s,m){return s+(m.shares||0);},0));
       var ds=g('dvStart');if(ds&&!ds.value){var yr=new Date().getFullYear();ds.value=yr+'-01-01';}
+      renderDvNetProfit();
     }
   });
 });
@@ -840,7 +932,7 @@ function popSels(){
 // Render
 // ══════════════════════════════════════
 function renderAll(){
-  renderDash();renderMembers();renderTxHist();renderExpHist();renderLoans();renderNotify();renderPF();popSels();
+  renderDash();renderMembers();renderTxHist();renderExpHist();renderLoans();renderNotify();renderPF();renderFin();popSels();
   sv('dvTotal',S.members.reduce(function(s,m){return s+(m.shares||0);},0));
 }
 
@@ -1232,6 +1324,45 @@ g('sendNfBtn').addEventListener('click',function(){
 // ══════════════════════════════════════
 // Dividend (คำนวนตามจำนวนวัน)
 // ══════════════════════════════════════
+// ── คำนวนกำไรสุทธิจากระบบ ──
+function renderDvNetProfit() {
+  var totalPaidBack     = S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
+  var principalPaidBack = S.loans.reduce(function(s,l){return s+((l.amount||0)-(l.outstanding||0));},0);
+  var interestReceived  = Math.max(0, Math.round((totalPaidBack - principalPaidBack)*100)/100);
+  // หักเฉพาะค่าใช้จ่ายดำเนินงาน — ไม่รวมการลงทุน/ฝากธนาคาร/ซื้อสินทรัพย์
+  var opExp = S.expenses
+    .filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; })
+    .reduce(function(s,e){ return s+(e.amount||0); }, 0);
+  var netProfit = Math.round((interestReceived - opExp)*100)/100;
+
+  st('dvIntReceived', fmt(interestReceived));
+  st('dvOpExp',       fmt(opExp));
+  var npEl = g('dvNetProfit');
+  if(npEl){ npEl.textContent = fmt(netProfit); npEl.style.color = netProfit>=0?'#1e40af':'var(--rd)'; }
+
+  window._dvNetProfit = netProfit;
+  updateDvProfitPool();
+}
+
+function updateDvProfitPool() {
+  var pct  = parseInt(v('dvProfitPct')) || 0;
+  var net  = window._dvNetProfit || 0;
+  var pool = Math.round(net * pct / 100 * 100) / 100;
+  var lbl  = g('dvProfitPctLabel'); if(lbl) lbl.textContent = pct + '%';
+  var pel  = g('dvProfitPool');     if(pel) pel.textContent = fmt(pool);
+  window._dvProfitPool = pool;
+}
+
+g('dvProfitPct').addEventListener('input', updateDvProfitPool);
+
+g('useNetProfitBtn').addEventListener('click', function(){
+  var pool = window._dvProfitPool || 0;
+  sv('dvProfit', Math.round(pool*100)/100);
+  toast('กรอกกำไรสุทธิ ' + fmt(pool) + ' แล้ว ✓');
+  // scroll to form
+  var el = g('dvProfit'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+});
+
 g('calcDivBtn').addEventListener('click',function(){
   var profit=parseFloat(v('dvProfit'))||0;
   var rate  =parseFloat(v('dvRate'))||5;
@@ -1408,9 +1539,9 @@ function balRow(label, amt, color) {
 g('showBalanceBtn').addEventListener('click', function(){
   var b = window._bal || {};
 
-  // ── 1. เงินสดคงเหลือ (ไม่หักเงินกู้ เพราะเงินกู้ = สินทรัพย์) ──
-  // รับเข้าทั้งหมด − ถอนหุ้น − รายจ่ายออก/ลงทุน
-  var cash = (b.totalIn||0) - (b.saveOut||0) - (b.expOut||0);
+  // ── 1. เงินสดคงเหลือในธนาคาร ──
+  // รับเข้าทั้งหมด − ถอนหุ้น − รายจ่ายออก − เงินกู้ที่ปล่อยออกไป
+  var cash = (b.totalIn||0) - (b.saveOut||0) - (b.expOut||0) - (b.loanOut||0);
 
   // ── 2. กำไรสุทธิ = ดอกเบี้ยที่รับจริง − ค่าใช้จ่ายดำเนินงาน ──
   // ดอกเบี้ยรับ = ยอดชำระทั้งหมด − เงินต้นที่ได้คืน (= ยอดกู้ต้น − ยอดคงค้างปัจจุบัน)
@@ -1454,7 +1585,7 @@ g('showBalanceBtn').addEventListener('click', function(){
   st('balTotalOut', fmt(totOut));
   si('balOutRows',
     balRow('ถอนหุ้น-ออมทรัพย์',    b.saveOut,  'var(--rd)') +
-    balRow('เงินกู้ที่ปล่อยออกไป',  b.loanOut,  '#9ca3af') +
+    balRow('เงินกู้ที่ปล่อยออกไป',  b.loanOut,  'var(--rd)') +
     balRow('รายจ่ายออก/ลงทุน',      b.expOut||0,'var(--rd)')
   );
 
@@ -1658,6 +1789,96 @@ document.addEventListener('click',function(e){
 // ══════════════════════════════════════
 // Init
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// Finance tab
+// ══════════════════════════════════════
+function finRow(label, amt, color, bold) {
+  return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:.5px dashed var(--bo)">' +
+    '<span style="color:var(--t2)">' + label + '</span>' +
+    '<span style="font-weight:'+(bold?'700':'500')+';color:'+(color||'var(--t1)')+'">'+fmt(amt)+'</span>' +
+    '</div>';
+}
+
+function renderFin() {
+  // ── รับเข้า ──
+  var saveIn   = S.transactions.filter(function(t){return t.type==='ฝากหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
+  var pfStaff  = S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
+  var pfSchool = S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
+  var other    = S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
+  var loanIn   = S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
+  var totalIn  = saveIn + pfStaff + pfSchool + other + loanIn;
+
+  // ── จ่ายออก ──
+  var saveOut  = S.transactions.filter(function(t){return t.type==='ถอนหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
+  var loanOut  = S.loans.reduce(function(s,l){return s+(l.amount||0);},0);
+  var expAll   = S.expenses.reduce(function(s,e){return s+(e.amount||0);},0);
+  // รายจ่ายยกเว้นประเภท "ลงทุนในธุรกิจ"
+  var expExInv = S.expenses.filter(function(e){return e.type!=='ลงทุนในธุรกิจ';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var expInv   = S.expenses.filter(function(e){return e.type==='ลงทุนในธุรกิจ';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var expOp    = S.expenses.filter(function(e){return e.type==='ค่าใช้จ่ายดำเนินงาน';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var expOther = S.expenses.filter(function(e){return e.type!=='ลงทุนในธุรกิจ'&&e.type!=='ค่าใช้จ่ายดำเนินงาน';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var totalOut = saveOut + loanOut + expAll;
+
+  // ── ยอด 1: เงินสดคงเหลือ (หักทุกประเภท) ──
+  var cash  = totalIn - saveOut - loanOut - expAll;
+  // ── ยอด 2: สินทรัพย์คงเหลือ (ยกเว้นลงทุนในธุรกิจ) ──
+  var asset = totalIn - saveOut - loanOut - expExInv;
+  // ── กำไรสุทธิ ──
+  var principalBack = S.loans.reduce(function(s,l){return s+((l.amount||0)-(l.outstanding||0));},0);
+  var intReceived   = Math.max(0, loanIn - principalBack);
+  var profit        = intReceived - expOp;
+
+  // แสดงยอดหลัก
+  var cashEl  = g('finCash');  if(cashEl){  cashEl.textContent  = fmt(cash);   cashEl.style.color  = cash>=0  ?'#15803d':'var(--rd)'; }
+  var assetEl = g('finAsset'); if(assetEl){ assetEl.textContent = fmt(asset);  assetEl.style.color = asset>=0 ?'#1e40af':'var(--rd)'; }
+  var profEl  = g('finProfit');if(profEl){  profEl.textContent  = fmt(profit); profEl.style.color  = profit>=0?'#5b21b6':'var(--rd)'; }
+
+  // รับเข้า rows
+  st('finTotalIn', fmt(totalIn));
+  si('finInRows',
+    finRow('ฝากหุ้น-ออมทรัพย์',    saveIn,   '#16a34a') +
+    finRow('PF บุคลากร',            pfStaff,  '#16a34a') +
+    finRow('PF โรงเรียน',           pfSchool, '#16a34a') +
+    finRow('รายได้อื่นๆ',            other,    '#16a34a') +
+    finRow('รับชำระหนี้ (รวมดอก)',   loanIn,   '#16a34a') +
+    finRow('  └ ดอกเบี้ยรับ (ประมาณ)', intReceived, '#2563eb') +
+    finRow('รวมรับเข้า', totalIn, '#16a34a', true)
+  );
+
+  // จ่ายออก rows
+  st('finTotalOut', fmt(totalOut));
+  si('finOutRows',
+    finRow('ถอนหุ้น-ออมทรัพย์',        saveOut,  'var(--rd)') +
+    finRow('เงินกู้ที่ปล่อยออกไป',      loanOut,  'var(--rd)') +
+    '<div style="margin-top:6px;margin-bottom:2px;font-size:11px;font-weight:600;color:var(--t2)">รายจ่ายออก</div>' +
+    finRow('  ลงทุนในธุรกิจ',           expInv,   'var(--rd)') +
+    finRow('  ค่าใช้จ่ายดำเนินงาน',      expOp,    'var(--rd)') +
+    finRow('  อื่นๆ (ฝากธนาคาร/สินทรัพย์)', expOther,'var(--rd)') +
+    '<div style="height:6px"></div>' +
+    finRow('รวมจ่ายออกทั้งหมด',         totalOut, 'var(--rd)', true) +
+    '<div style="background:#eff6ff;border-radius:6px;padding:8px;margin-top:8px;font-size:11px">' +
+      '<div style="display:flex;justify-content:space-between;color:#1e40af;font-weight:600">' +
+        '<span>สินทรัพย์คงเหลือ (ไม่นับลงทุนในธุรกิจ)</span><span>'+fmt(asset)+'</span></div>' +
+      '<div style="font-size:10px;color:var(--t2);margin-top:2px">= รับเข้า − ถอนหุ้น − เงินกู้ − รายจ่าย (ยกเว้นลงทุนในธุรกิจ '+fmt(expInv)+')</div>' +
+    '</div>'
+  );
+
+  // ตารางรายจ่ายออก
+  var expRows = S.expenses.slice().reverse().slice(0,20);
+  si('finExpTable', expRows.length
+    ? expRows.map(function(e){
+        return '<tr>' +
+          '<td>'+e.date+'</td>' +
+          '<td><span class="badge br-badge" style="font-size:10px">'+e.type+'</span></td>' +
+          '<td style="color:var(--rd);font-weight:600">'+fmt(e.amount)+'</td>' +
+          '<td style="color:var(--t2);font-size:11px">'+e.approver+'</td>' +
+          '<td style="color:var(--t2);font-size:11px">'+(e.note||'–')+'</td>' +
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มีรายการจ่ายออก</td></tr>'
+  );
+}
+
 // ══════════════════════════════════════
 // Provident Fund
 // ══════════════════════════════════════
