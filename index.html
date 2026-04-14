@@ -518,25 +518,38 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
 
 <!-- BALANCE MODAL -->
 <div id="balanceModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;display:none;align-items:center;justify-content:center;padding:16px">
-  <div class="modal-box" style="max-width:420px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="font-size:15px;font-weight:700;color:var(--t1)">&#128176; ยอดเงินคงเหลือจริง</div>
+  <div class="modal-box" style="max-width:440px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:700;color:var(--t1)">&#128176; สรุปการเงินสหกรณ์</div>
       <div id="balBadge" style="font-size:11px;padding:3px 12px;border-radius:99px;font-weight:600"></div>
     </div>
-    <!-- ยอดสุทธิ -->
-    <div style="text-align:center;background:var(--bg2);border-radius:var(--r2);padding:18px;margin-bottom:14px">
-      <div style="font-size:11px;color:var(--t2);margin-bottom:6px">ยอดสุทธิ (รับเข้า − จ่ายออก)</div>
-      <div id="balTotal" style="font-size:32px;font-weight:800">–</div>
+
+    <!-- ยอดที่ 1: เงินสดคงเหลือ -->
+    <div style="background:var(--bg2);border-radius:var(--r2);padding:14px;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--t2);margin-bottom:4px">&#128181; ยอดเงินสดคงเหลือ</div>
+      <div style="font-size:10px;color:var(--t2);margin-bottom:8px">(รับเข้าทั้งหมด − ถอนหุ้น − รายจ่ายออก) <b>ไม่หักเงินกู้</b></div>
+      <div id="balCash" style="font-size:26px;font-weight:800;color:var(--g)">–</div>
     </div>
+
+    <!-- ยอดที่ 2: กำไรสุทธิ -->
+    <div style="background:var(--bg2);border-radius:var(--r2);padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--t2);margin-bottom:4px">&#128200; กำไรสุทธิ (ดอกเบี้ยรับ − ค่าใช้จ่าย)</div>
+      <div style="font-size:10px;color:var(--t2);margin-bottom:8px">(ดอกเบี้ยจากการชำระหนี้ − รายจ่ายดำเนินงาน)</div>
+      <div id="balProfit" style="font-size:26px;font-weight:800;color:var(--bl)">–</div>
+    </div>
+
     <!-- รับเข้า -->
-    <div style="background:#f0fdf4;border:.5px solid #86efac;border-radius:var(--r);padding:12px;margin-bottom:10px">
-      <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:8px">&#9650; รับเข้าทั้งหมด — <span id="balTotalIn" style="font-size:14px"></span></div>
+    <div style="background:#f0fdf4;border:.5px solid #86efac;border-radius:var(--r);padding:12px;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:8px">&#9650; รับเข้าทั้งหมด — <span id="balTotalIn"></span></div>
       <div id="balInRows"></div>
     </div>
     <!-- จ่ายออก -->
     <div style="background:#fff5f5;border:.5px solid #fca5a5;border-radius:var(--r);padding:12px;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">&#9660; จ่ายออกทั้งหมด — <span id="balTotalOut" style="font-size:14px"></span></div>
+      <div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">&#9660; จ่ายออกทั้งหมด — <span id="balTotalOut"></span></div>
       <div id="balOutRows"></div>
+      <div style="font-size:10px;color:var(--t2);margin-top:8px;padding-top:8px;border-top:.5px dashed #fca5a5">
+        * เงินกู้ที่ปล่อยออกไปยังเป็นสินทรัพย์ของสหกรณ์ (ลูกหนี้) ไม่นับเป็นรายจ่ายสุทธิ
+      </div>
     </div>
     <button class="btn btns" style="width:100%" id="closeBalanceBtn">ปิด</button>
   </div>
@@ -1394,37 +1407,55 @@ function balRow(label, amt, color) {
 
 g('showBalanceBtn').addEventListener('click', function(){
   var b = window._bal || {};
-  var bal    = b.balance  || 0;
+
+  // ── 1. เงินสดคงเหลือ (ไม่หักเงินกู้ เพราะเงินกู้ = สินทรัพย์) ──
+  // รับเข้าทั้งหมด − ถอนหุ้น − รายจ่ายออก/ลงทุน
+  var cash = (b.totalIn||0) - (b.saveOut||0) - (b.expOut||0);
+
+  // ── 2. กำไรสุทธิ = ดอกเบี้ยที่รับจริง − ค่าใช้จ่ายดำเนินงาน ──
+  // ดอกเบี้ยรับ = ยอดชำระทั้งหมด − เงินต้นที่ได้คืน (= ยอดกู้ต้น − ยอดคงค้างปัจจุบัน)
+  var totalPaidBack   = b.loanIn  || 0;
+  var principalPaidBack = S.loans.reduce(function(s,l){ return s + ((l.amount||0) - (l.outstanding||0)); }, 0);
+  var interestReceived  = Math.max(0, totalPaidBack - principalPaidBack);
+  // ค่าใช้จ่ายดำเนินงาน = รายจ่ายออกประเภท "ค่าใช้จ่ายดำเนินงาน"
+  var opExp = S.expenses.filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; }).reduce(function(s,e){ return s+(e.amount||0); }, 0);
+  var profit = interestReceived - opExp;
+
   var totIn  = b.totalIn  || 0;
   var totOut = b.totalOut || 0;
 
-  // ยอดสุทธิ
-  var balEl = g('balTotal');
-  if(balEl){ balEl.textContent = fmt(bal); balEl.style.color = bal >= 0 ? 'var(--g)' : 'var(--rd)'; }
+  // แสดงเงินสด
+  var cashEl = g('balCash');
+  if(cashEl){ cashEl.textContent = fmt(cash); cashEl.style.color = cash>=0?'var(--g)':'var(--rd)'; }
+
+  // แสดงกำไร
+  var profEl = g('balProfit');
+  if(profEl){ profEl.textContent = fmt(profit); profEl.style.color = profit>=0?'var(--bl)':'var(--rd)'; }
 
   // badge
   var badge = g('balBadge');
   if(badge){
-    if(bal >= 0){ badge.textContent = 'สุขภาพดี ✓'; badge.style.background = '#dcfce7'; badge.style.color = '#15803d'; }
-    else        { badge.textContent = 'ติดลบ ⚠';   badge.style.background = 'var(--rl)'; badge.style.color = 'var(--rd)'; }
+    if(cash >= 0){ badge.textContent = 'สุขภาพดี ✓'; badge.style.background = '#dcfce7'; badge.style.color = '#15803d'; }
+    else         { badge.textContent = 'ติดลบ ⚠';    badge.style.background = 'var(--rl)'; badge.style.color = 'var(--rd)'; }
   }
 
   // รับเข้า
   st('balTotalIn', fmt(totIn));
   si('balInRows',
-    balRow('ฝากหุ้น-ออมทรัพย์',   b.saveIn,   '#16a34a') +
-    balRow('PF บุคลากร',           b.pfStaff,  '#16a34a') +
-    balRow('PF โรงเรียน',          b.pfSchool, '#16a34a') +
-    balRow('รายได้อื่นๆ',           b.other,    '#16a34a') +
-    balRow('รับชำระหนี้จากสมาชิก', b.loanIn,   '#16a34a')
+    balRow('ฝากหุ้น-ออมทรัพย์',    b.saveIn,          '#16a34a') +
+    balRow('PF บุคลากร',            b.pfStaff,         '#16a34a') +
+    balRow('PF โรงเรียน',           b.pfSchool,        '#16a34a') +
+    balRow('รายได้อื่นๆ',            b.other,           '#16a34a') +
+    balRow('รับชำระหนี้จากสมาชิก',  b.loanIn,          '#16a34a') +
+    balRow('  └ ดอกเบี้ยรับ (ประมาณ)', interestReceived, '#2563eb')
   );
 
   // จ่ายออก
   st('balTotalOut', fmt(totOut));
   si('balOutRows',
-    balRow('ถอนหุ้น-ออมทรัพย์',     b.saveOut, 'var(--rd)') +
-    balRow('เงินกู้ที่ปล่อยออกไป',   b.loanOut, 'var(--rd)') +
-    balRow('รายจ่ายออก/ลงทุน',       b.expOut||0, 'var(--rd)')
+    balRow('ถอนหุ้น-ออมทรัพย์',    b.saveOut,  'var(--rd)') +
+    balRow('เงินกู้ที่ปล่อยออกไป',  b.loanOut,  '#9ca3af') +
+    balRow('รายจ่ายออก/ลงทุน',      b.expOut||0,'var(--rd)')
   );
 
   var m = g('balanceModal'); if(m) m.style.display = 'flex';
