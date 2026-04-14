@@ -237,6 +237,38 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     <thead><tr><th>วันที่</th><th>ชื่อ</th><th>ประเภท</th><th>จำนวน</th><th>หมายเหตุ</th></tr></thead>
     <tbody id="txHist"></tbody>
   </table></div></div>
+
+  <!-- ════ รายจ่ายออก ════ -->
+  <div class="st" style="margin-top:8px;color:var(--rd)">&#128197; บันทึกรายจ่ายออก (การลงทุน/โอนเงินออก)</div>
+  <div class="card" style="border:.5px solid #fca5a5">
+    <div class="r2">
+      <div><label class="fl">วันที่โอน *</label><input id="expDate" type="date"></div>
+      <div><label class="fl">จำนวนเงิน (บาท) *</label><input id="expAmt" type="number" placeholder="0" min="0" step="0.01"></div>
+    </div>
+    <label class="fl">ประเภทการลงทุน/อ้างอิง *</label>
+    <select id="expType">
+      <option value="ลงทุนในธุรกิจ">ลงทุนในธุรกิจ</option>
+      <option value="ฝากธนาคาร">ฝากธนาคาร</option>
+      <option value="ซื้อสินทรัพย์">ซื้อสินทรัพย์</option>
+      <option value="ค่าใช้จ่ายดำเนินงาน">ค่าใช้จ่ายดำเนินงาน</option>
+      <option value="อื่นๆ">อื่นๆ (ระบุในหมายเหตุ)</option>
+    </select>
+    <div class="r2">
+      <div><label class="fl">ผู้อนุมัติ *</label><input id="expApprover" type="text" placeholder="ชื่อผู้อนุมัติ"></div>
+      <div><label class="fl">บันทึกโดย</label><input id="expBy" type="text" placeholder="ชื่อผู้บันทึก"></div>
+    </div>
+    <label class="fl">หมายเหตุ / รายละเอียด</label>
+    <textarea id="expNote" placeholder="ระบุรายละเอียดการโอนเงิน เช่น โอนเข้าบัญชี SCB xxx"></textarea>
+    <div class="brow">
+      <button class="btn" style="background:#dc2626;color:#fff;border-color:#dc2626" id="saveExpBtn">&#128190; บันทึกรายจ่าย</button>
+      <button class="btn btns" id="clearExpBtn">ล้าง</button>
+    </div>
+  </div>
+  <div class="st" style="color:var(--rd)">ประวัติรายจ่ายออก</div>
+  <div class="card" style="padding:0"><div class="tw"><table>
+    <thead><tr><th>วันที่</th><th>ประเภท</th><th>จำนวน</th><th>ผู้อนุมัติ</th><th>หมายเหตุ</th></tr></thead>
+    <tbody id="expHist"></tbody>
+  </table></div></div>
 </div>
 
 <!-- ════════════ LOAN ════════════ -->
@@ -653,11 +685,13 @@ var S={
   members:     JSON.parse(localStorage.getItem('swd_m') ||'[]'),
   transactions:JSON.parse(localStorage.getItem('swd_tx')||'[]'),
   loans:       JSON.parse(localStorage.getItem('swd_ln')||'[]'),
+  expenses:    JSON.parse(localStorage.getItem('swd_ex')||'[]'),
 };
 function persist(){
   localStorage.setItem('swd_m', JSON.stringify(S.members));
   localStorage.setItem('swd_tx',JSON.stringify(S.transactions));
   localStorage.setItem('swd_ln',JSON.stringify(S.loans));
+  localStorage.setItem('swd_ex',JSON.stringify(S.expenses));
 }
 
 // ══════════════════════════════════════
@@ -718,6 +752,10 @@ function doSync(){
         rate:isNaN(rateVal)?0:rateVal,term:parseInt(r['จำนวนงวด'])||12,
         date:r['วันที่กู้']||'',dueDate:r['วันครบงวดแรก']||'',
         purpose:r['วัตถุประสงค์']||'',status:r['สถานะ']||'กำลังผ่อน'};
+    });
+    S.expenses=((d.expenses)||[]).map(function(r){
+      return{date:r['วันที่']||'',type:r['ประเภท']||'',amount:parseFloat(r['จำนวน (บาท)'])||0,
+        approver:r['ผู้อนุมัติ']||'',by:r['บันทึกโดย']||'',note:r['หมายเหตุ']||''};
     });
     persist();setSyncBtn('ok');renderAll();
     toast('ซิงก์จาก Google Sheets สำเร็จ ✓');
@@ -789,7 +827,7 @@ function popSels(){
 // Render
 // ══════════════════════════════════════
 function renderAll(){
-  renderDash();renderMembers();renderTxHist();renderLoans();renderNotify();renderPF();popSels();
+  renderDash();renderMembers();renderTxHist();renderExpHist();renderLoans();renderNotify();renderPF();popSels();
   sv('dvTotal',S.members.reduce(function(s,m){return s+(m.shares||0);},0));
 }
 
@@ -811,6 +849,8 @@ function renderDash(){
   var other=S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
   // ชำระเงินกู้รับเข้า
   var loanIn=S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
+  // รายจ่ายออก (ลงทุน)
+  var expOut=S.expenses.reduce(function(s,e){return s+(e.amount||0);},0);
   // เงินกู้ที่ปล่อยออกไป (วงเงินทุกรายการ)
   var loanOut=S.loans.reduce(function(s,l){return s+(l.amount||0);},0);
   // หนี้
@@ -820,7 +860,7 @@ function renderDash(){
 
   // ══ ยอดคงเหลือจริง ══
   var totalIn  = saveIn + pf + other + loanIn;
-  var totalOut = saveOut + loanOut;
+  var totalOut = saveOut + loanOut + expOut;
   var balance  = totalIn - totalOut;
 
   st('dMem',S.members.length);
@@ -833,7 +873,7 @@ function renderDash(){
   // ยอดคงเหลือ — เก็บไว้ใน window เพื่อใช้ใน modal
   window._bal = {
     saveIn:saveIn, saveOut:saveOut, pfStaff:pfStaff, pfSchool:pfSchool,
-    other:other, loanIn:loanIn, loanOut:loanOut,
+    other:other, loanIn:loanIn, loanOut:loanOut, expOut:expOut,
     totalIn:totalIn, totalOut:totalOut, balance:balance
   };
 
@@ -1297,6 +1337,52 @@ g('closePFModalBtn').addEventListener('click', function(){
 });
 
 // ══════════════════════════════════════
+// Expenses (รายจ่ายออก)
+// ══════════════════════════════════════
+function renderExpHist(){
+  var rows=S.expenses.slice().reverse().slice(0,50);
+  si('expHist', rows.length
+    ? rows.map(function(e){
+        return '<tr>'+
+          '<td>'+e.date+'</td>'+
+          '<td><span class="badge br-badge" style="font-size:10px">'+e.type+'</span></td>'+
+          '<td style="color:var(--rd);font-weight:600">'+fmt(e.amount)+'</td>'+
+          '<td style="color:var(--t2)">'+e.approver+'</td>'+
+          '<td style="color:var(--t2);font-size:11px">'+(e.note||'–')+'</td>'+
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มีรายการจ่ายออก</td></tr>'
+  );
+}
+
+g('saveExpBtn').addEventListener('click',function(){
+  var amt=parseFloat(v('expAmt'));
+  var approver=v('expApprover').trim();
+  if(!amt||amt<=0){toast('กรุณากรอกจำนวนเงิน',true);return;}
+  if(!approver){toast('กรุณากรอกชื่อผู้อนุมัติ',true);return;}
+  var data={
+    'วันที่':v('expDate')||today(),
+    'ประเภท':v('expType'),
+    'จำนวน (บาท)':amt,
+    'ผู้อนุมัติ':approver,
+    'บันทึกโดย':v('expBy')||'ระบบ',
+    'หมายเหตุ':v('expNote')
+  };
+  apiPost('saveExpense',data,function(){
+    S.expenses.push({date:data['วันที่'],type:data['ประเภท'],amount:amt,
+      approver:approver,by:data['บันทึกโดย'],note:data['หมายเหตุ']});
+    persist();renderAll();
+    toast('บันทึกรายจ่ายออก '+fmt(amt)+' ✓');
+    g('clearExpBtn').click();
+  });
+});
+
+g('clearExpBtn').addEventListener('click',function(){
+  sv('expAmt','');sv('expApprover','');sv('expBy','');sv('expNote','');
+  sv('expDate',today());
+});
+
+// ══════════════════════════════════════
 // Balance modal
 // ══════════════════════════════════════
 function balRow(label, amt, color) {
@@ -1337,7 +1423,8 @@ g('showBalanceBtn').addEventListener('click', function(){
   st('balTotalOut', fmt(totOut));
   si('balOutRows',
     balRow('ถอนหุ้น-ออมทรัพย์',     b.saveOut, 'var(--rd)') +
-    balRow('เงินกู้ที่ปล่อยออกไป',   b.loanOut, 'var(--rd)')
+    balRow('เงินกู้ที่ปล่อยออกไป',   b.loanOut, 'var(--rd)') +
+    balRow('รายจ่ายออก/ลงทุน',       b.expOut||0, 'var(--rd)')
   );
 
   var m = g('balanceModal'); if(m) m.style.display = 'flex';
@@ -1651,7 +1738,7 @@ g('pfTabSchool').addEventListener('click',function(){
 
 // ══════════════════════════════════════
 // Init
-sv('txDate',today());sv('lnDate',today());sv('mJoin',today());
+sv('txDate',today());sv('lnDate',today());sv('mJoin',today());sv('expDate',today());
 renderAll();
 if(GAS_URL)doSync();
 </script>
