@@ -131,6 +131,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
   <button class="nb" data-tab="tx"><span class="ni">💰</span>ฝาก-ถอน</button>
   <button class="nb" data-tab="loan"><span class="ni">📋</span>สินเชื่อ</button>
   <button class="nb" data-tab="nf"><span class="ni">🔔</span>แจ้งเตือน</button>
+  <button class="nb" data-tab="pf"><span class="ni">💼</span>PF</button>
   <button class="nb" data-tab="dv"><span class="ni">🏆</span>เงินปันผล</button>
 </nav>
 
@@ -313,6 +314,71 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
   </div>
 </div>
 
+<!-- ════════════ PROVIDENT FUND ════════════ -->
+<div id="pn-pf" class="pn">
+  <div class="st">Provident Fund — รายบุคคล</div>
+
+  <!-- summary stats -->
+  <div class="sg3" style="margin-bottom:12px">
+    <div class="sc"><div class="sl">PF บุคลากร รวม</div><div class="sv b" id="pfTotalStaff">–</div></div>
+    <div class="sc"><div class="sl">PF รร.สมทบ รวม</div><div class="sv p" id="pfTotalSchool">–</div></div>
+    <div class="sc"><div class="sl">รวมทั้งหมด</div><div class="sv g" id="pfTotalAll">–</div></div>
+  </div>
+
+  <!-- เลือกสมาชิก -->
+  <div class="card">
+    <label class="fl">เลือกดูรายบุคคล</label>
+    <select id="pfMember"><option value="">-- เลือกสมาชิก --</option></select>
+    <button class="btn btnp" id="pfViewBtn" style="width:100%;margin-top:4px">&#128269; ดูรายการ</button>
+  </div>
+
+  <!-- รายละเอียดรายบุคคล -->
+  <div id="pfDetail" style="display:none">
+    <div class="card" style="border:.5px solid #6ee7b7;background:linear-gradient(135deg,#f0fdf4,#fff)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--gl);color:var(--g);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0" id="pfAvatar">–</div>
+        <div><div style="font-size:14px;font-weight:700;color:var(--t1)" id="pfName">–</div><div style="font-size:11px;color:var(--t2)" id="pfDeptBranch">–</div></div>
+      </div>
+      <div class="sg3">
+        <div style="background:#dbeafe;border-radius:var(--r);padding:10px;text-align:center">
+          <div style="font-size:10px;color:#1e40af;font-weight:600">PF บุคลากร</div>
+          <div style="font-size:16px;font-weight:800;color:#1e40af;margin-top:4px" id="pfPersonStaff">–</div>
+        </div>
+        <div style="background:var(--pul);border-radius:var(--r);padding:10px;text-align:center">
+          <div style="font-size:10px;color:#5b21b6;font-weight:600">PF รร.สมทบ</div>
+          <div style="font-size:16px;font-weight:800;color:#5b21b6;margin-top:4px" id="pfPersonSchool">–</div>
+        </div>
+        <div style="background:#dcfce7;border-radius:var(--r);padding:10px;text-align:center">
+          <div style="font-size:10px;color:#15803d;font-weight:600">รวมทั้งหมด</div>
+          <div style="font-size:16px;font-weight:800;color:#15803d;margin-top:4px" id="pfPersonTotal">–</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ประวัติรายการ -->
+    <div class="st">ประวัติรายการ</div>
+    <div class="card" style="padding:0">
+      <!-- tab: all / staff / school -->
+      <div style="display:flex;border-bottom:.5px solid var(--bo)">
+        <button class="btn btns" id="pfTabAll"    style="flex:1;border-radius:0;border:none;border-bottom:2px solid var(--g);font-weight:600;color:var(--g);font-size:12px">ทั้งหมด</button>
+        <button class="btn btns" id="pfTabStaff"  style="flex:1;border-radius:0;border:none;font-size:12px">PF บุคลากร</button>
+        <button class="btn btns" id="pfTabSchool" style="flex:1;border-radius:0;border:none;font-size:12px">PF รร.สมทบ</button>
+      </div>
+      <div class="tw"><table>
+        <thead><tr><th>วันที่</th><th>ประเภท</th><th>จำนวน</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="pfTxTable"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ตารางสรุปทุกคน -->
+  <div class="st" style="margin-top:4px">สรุปยอดสะสมทุกคน</div>
+  <div class="card" style="padding:0"><div class="tw"><table>
+    <thead><tr><th>ชื่อ</th><th>PF บุคลากร</th><th>PF รร.สมทบ</th><th>รวม</th></tr></thead>
+    <tbody id="pfSummaryTable"></tbody>
+  </table></div></div>
+</div>
+
 <!-- ════════════ DIVIDEND ════════════ -->
 <div id="pn-dv" class="pn">
   <div class="st">คำนวนเงินปันผลประจำปี (ตามจำนวนวัน)</div>
@@ -366,6 +432,54 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
       <button class="btn btnp" id="saveEditBtn">💾 บันทึก</button>
       <button class="btn btnr" id="deleteBtn">🗑 ลบสมาชิก</button>
       <button class="btn btns" id="closeModalBtn">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- PF MODAL -->
+<div id="pfModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;display:none;align-items:center;justify-content:center;padding:16px">
+  <div class="modal-box" style="max-width:440px">
+    <!-- header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:700;color:var(--t1)">&#128188; Provident Fund</div>
+      <button class="btn btns" id="closePFModalBtn" style="padding:4px 12px;font-size:12px">ปิด</button>
+    </div>
+    <!-- member info -->
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:14px">
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--gl);color:var(--g);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0" id="pfmAvatar">–</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--t1)" id="pfmName">–</div>
+        <div style="font-size:11px;color:var(--t2)" id="pfmSub">–</div>
+      </div>
+    </div>
+    <!-- ยอดรวม 3 กล่อง -->
+    <div class="sg3" style="margin-bottom:14px">
+      <div style="background:#dbeafe;border-radius:var(--r);padding:10px;text-align:center">
+        <div style="font-size:10px;color:#1e40af;font-weight:600">PF บุคลากร</div>
+        <div style="font-size:15px;font-weight:800;color:#1e40af;margin-top:4px" id="pfmStaff">–</div>
+      </div>
+      <div style="background:var(--pul);border-radius:var(--r);padding:10px;text-align:center">
+        <div style="font-size:10px;color:#5b21b6;font-weight:600">PF รร.สมทบ</div>
+        <div style="font-size:15px;font-weight:800;color:#5b21b6;margin-top:4px" id="pfmSchool">–</div>
+      </div>
+      <div style="background:#dcfce7;border-radius:var(--r);padding:10px;text-align:center">
+        <div style="font-size:10px;color:#15803d;font-weight:600">รวมทั้งหมด</div>
+        <div style="font-size:15px;font-weight:800;color:#15803d;margin-top:4px" id="pfmTotal">–</div>
+      </div>
+    </div>
+    <!-- ประวัติรายการ -->
+    <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">ประวัติรายการ</div>
+    <div style="max-height:280px;overflow-y:auto;border-radius:var(--r);border:.5px solid var(--bo)">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr>
+            <th style="background:var(--bg2);padding:7px 10px;text-align:left;font-weight:600;color:var(--t2);border-bottom:.5px solid var(--bo);white-space:nowrap">วันที่</th>
+            <th style="background:var(--bg2);padding:7px 10px;text-align:left;font-weight:600;color:var(--t2);border-bottom:.5px solid var(--bo)">ประเภท</th>
+            <th style="background:var(--bg2);padding:7px 10px;text-align:right;font-weight:600;color:var(--t2);border-bottom:.5px solid var(--bo)">จำนวน</th>
+          </tr>
+        </thead>
+        <tbody id="pfmTxTable"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -641,6 +755,7 @@ navBtns.forEach(function(btn){
     if(tab==='tx')renderTxHist();
     if(tab==='loan'){renderLoans();calcLoan();}
     if(tab==='nf')renderNotify();
+    if(tab==='pf')renderPF();
     if(tab==='dv'){
       sv('dvTotal',S.members.reduce(function(s,m){return s+(m.shares||0);},0));
       var ds=g('dvStart');if(ds&&!ds.value){var yr=new Date().getFullYear();ds.value=yr+'-01-01';}
@@ -653,7 +768,7 @@ function popSels(){
     S.members.map(function(m){
       return '<option value="'+m.id+'">'+m.id+' – '+fullName(m)+'</option>';
     }).join('');
-  ['txM','lnM','nfM'].forEach(function(id){
+  ['txM','lnM','nfM','pfMember'].forEach(function(id){
     var sel=g(id);if(!sel)return;
     var cur=sel.value;sel.innerHTML=opts;sel.value=cur;
   });
@@ -663,7 +778,7 @@ function popSels(){
 // Render
 // ══════════════════════════════════════
 function renderAll(){
-  renderDash();renderMembers();renderTxHist();renderLoans();renderNotify();popSels();
+  renderDash();renderMembers();renderTxHist();renderLoans();renderNotify();renderPF();popSels();
   sv('dvTotal',S.members.reduce(function(s,m){return s+(m.shares||0);},0));
 }
 
@@ -733,7 +848,10 @@ function renderMembers(){
         '<div style="flex:1"><div class="mn">'+fullName(m)+'</div>'+
         '<div class="ms">'+m.id+' · '+(m.dept||'–')+' · '+(m.branch||'–')+'</div>'+
         '<div class="ms">หุ้น '+fmt(m.shares)+' · '+(m.phone||'–')+'</div></div>'+
-        '<button class="btn btns" style="font-size:11px;padding:4px 10px;flex-shrink:0" data-action="edit" data-id="'+m.id+'">✏️ แก้ไข</button>'+
+        '<div style="display:flex;gap:4px;flex-shrink:0">'+
+        '<button class="btn btns" style="font-size:11px;padding:4px 8px" data-action="viewPF" data-id="'+m.id+'">&#128188; PF</button>'+
+        '<button class="btn btns" style="font-size:11px;padding:4px 8px" data-action="edit" data-id="'+m.id+'">&#9998; แก้ไข</button>'+
+        '</div>'+
         '</div>';
     }).join('')
     :'<div class="empty"><div class="ei">👥</div>ยังไม่มีข้อมูล</div>');
@@ -1103,6 +1221,47 @@ g('deleteBtn').addEventListener('click',function(){
 });
 
 // ══════════════════════════════════════
+// PF Modal (from member list)
+// ══════════════════════════════════════
+function openPFModal(mid) {
+  var m = findM(mid); if(!m) return;
+  var fn=m.fname||'?', ln=m.lname||'?';
+  st('pfmAvatar', fn[0]+(ln[0]||''));
+  st('pfmName',   fullName(m));
+  st('pfmSub',    m.id+' · '+(m.dept||'–')+' · '+(m.branch||'–'));
+
+  var staff  = S.transactions.filter(function(t){return t.mid===mid && t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
+  var school = S.transactions.filter(function(t){return t.mid===mid && t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
+  st('pfmStaff',  fmt(staff));
+  st('pfmSchool', fmt(school));
+  st('pfmTotal',  fmt(staff+school));
+
+  var rows = S.transactions.filter(function(t){
+    return t.mid===mid && (t.type==='ฝาก-Provident Fund บุคลากร' || t.type==='ฝาก-Provident Fund โรงเรียน');
+  }).slice().reverse();
+
+  si('pfmTxTable', rows.length
+    ? rows.map(function(t){
+        var isStaff = t.type==='ฝาก-Provident Fund บุคลากร';
+        return '<tr>' +
+          '<td style="padding:7px 10px;border-bottom:.5px solid var(--bo);color:var(--t2)">'+t.date+'</td>' +
+          '<td style="padding:7px 10px;border-bottom:.5px solid var(--bo)">' +
+            '<span class="badge '+(isStaff?'bb-badge':'bp-badge')+'" style="font-size:9px">'+(isStaff?'PF บุคลากร':'PF รร.สมทบ')+'</span>' +
+          '</td>' +
+          '<td style="padding:7px 10px;border-bottom:.5px solid var(--bo);text-align:right;font-weight:600;color:'+(isStaff?'#1e40af':'#5b21b6')+'">'+fmt(t.amount)+'</td>' +
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--t2);padding:16px">ยังไม่มีรายการ PF</td></tr>'
+  );
+
+  var modal = g('pfModal'); if(modal) modal.style.display='flex';
+}
+
+g('closePFModalBtn').addEventListener('click', function(){
+  var modal = g('pfModal'); if(modal) modal.style.display='none';
+});
+
+// ══════════════════════════════════════
 // Balance modal
 // ══════════════════════════════════════
 function balRow(label, amt, color) {
@@ -1314,6 +1473,10 @@ document.addEventListener('click',function(e){
     openLoanModal(idx);
     return;
   }
+  // view PF
+  var pfBtn = e.target.closest('[data-action="viewPF"]');
+  if(pfBtn){ openPFModal(pfBtn.getAttribute('data-id')); return; }
+
   // edit member
   var eb=e.target.closest('[data-action="edit"]');
   if(eb){
@@ -1342,6 +1505,117 @@ document.addEventListener('click',function(e){
 // ══════════════════════════════════════
 // Init
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// Provident Fund
+// ══════════════════════════════════════
+var _pfTab = 'all';
+
+function pfAmts(mid) {
+  var staff  = S.transactions.filter(function(t){return t.mid===mid && t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
+  var school = S.transactions.filter(function(t){return t.mid===mid && t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
+  return {staff:staff, school:school, total:staff+school};
+}
+
+function renderPF() {
+  // summary stats ด้านบน
+  var totStaff=0, totSchool=0;
+  S.members.forEach(function(m){ var a=pfAmts(m.id); totStaff+=a.staff; totSchool+=a.school; });
+  st('pfTotalStaff',  fmt(totStaff));
+  st('pfTotalSchool', fmt(totSchool));
+  st('pfTotalAll',    fmt(totStaff+totSchool));
+
+  // ตารางสรุปทุกคน
+  si('pfSummaryTable', S.members.length
+    ? S.members.map(function(m){
+        var a = pfAmts(m.id);
+        return '<tr>' +
+          '<td><div style="font-weight:600;font-size:12px">'+fullName(m)+'</div><div style="font-size:10px;color:var(--t2)">'+m.id+'</div></td>' +
+          '<td style="color:#1e40af;font-weight:600">'+fmt(a.staff)+'</td>' +
+          '<td style="color:#5b21b6;font-weight:600">'+fmt(a.school)+'</td>' +
+          '<td style="color:#15803d;font-weight:700">'+fmt(a.total)+'</td>' +
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มีสมาชิก</td></tr>'
+  );
+}
+
+function renderPFDetail(mid) {
+  var m = findM(mid); if(!m) return;
+  var a = pfAmts(mid);
+
+  // avatar + info
+  var fn=m.fname||'?', ln=m.lname||'?';
+  st('pfAvatar', fn[0]+(ln[0]||''));
+  st('pfName', fullName(m));
+  st('pfDeptBranch', (m.dept||'–')+' · '+(m.branch||'–'));
+  st('pfPersonStaff',  fmt(a.staff));
+  st('pfPersonSchool', fmt(a.school));
+  st('pfPersonTotal',  fmt(a.total));
+
+  var d = g('pfDetail'); if(d) d.style.display='block';
+  renderPFTx(mid);
+}
+
+function renderPFTx(mid) {
+  var types = {
+    'all':    ['ฝาก-Provident Fund บุคลากร','ฝาก-Provident Fund โรงเรียน'],
+    'staff':  ['ฝาก-Provident Fund บุคลากร'],
+    'school': ['ฝาก-Provident Fund โรงเรียน']
+  };
+  var allowed = types[_pfTab] || types['all'];
+  var rows = S.transactions.filter(function(t){
+    return t.mid===mid && allowed.indexOf(t.type)>=0;
+  }).slice().reverse();
+
+  var tc = {'ฝาก-Provident Fund บุคลากร':'bb-badge','ฝาก-Provident Fund โรงเรียน':'bp-badge'};
+  si('pfTxTable', rows.length
+    ? rows.map(function(t){
+        return '<tr>' +
+          '<td>'+t.date+'</td>' +
+          '<td><span class="badge '+(tc[t.type]||'ba-badge')+'" style="font-size:9px">'+t.type.replace('ฝาก-Provident Fund ','PF ')+'</span></td>' +
+          '<td style="font-weight:600">'+fmt(t.amount)+'</td>' +
+          '<td style="color:var(--t2);font-size:11px">'+(t.note||'–')+'</td>' +
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--t2);padding:14px">ไม่มีรายการ</td></tr>'
+  );
+}
+
+// PF view button
+g('pfViewBtn').addEventListener('click', function(){
+  var mid = v('pfMember');
+  if(!mid){toast('กรุณาเลือกสมาชิก',true);return;}
+  _pfTab='all';
+  setPFTab('all');
+  renderPFDetail(mid);
+});
+
+// PF tab buttons
+function setPFTab(tab){
+  _pfTab=tab;
+  ['pfTabAll','pfTabStaff','pfTabSchool'].forEach(function(id){
+    var el=g(id);if(!el)return;
+    el.style.borderBottom = id==='pfTab'+tab.charAt(0).toUpperCase()+tab.slice(1) ? '2px solid var(--g)' : 'none';
+    el.style.color        = id==='pfTab'+tab.charAt(0).toUpperCase()+tab.slice(1) ? 'var(--g)' : 'var(--t2)';
+    el.style.fontWeight   = id==='pfTab'+tab.charAt(0).toUpperCase()+tab.slice(1) ? '600' : '400';
+  });
+}
+
+g('pfTabAll').addEventListener('click',function(){
+  setPFTab('all');
+  var mid=v('pfMember');if(mid)renderPFTx(mid);
+});
+g('pfTabStaff').addEventListener('click',function(){
+  setPFTab('staff');
+  var mid=v('pfMember');if(mid)renderPFTx(mid);
+});
+g('pfTabSchool').addEventListener('click',function(){
+  setPFTab('school');
+  var mid=v('pfMember');if(mid)renderPFTx(mid);
+});
+
+// ══════════════════════════════════════
+// Init
 sv('txDate',today());sv('lnDate',today());sv('mJoin',today());
 renderAll();
 if(GAS_URL)doSync();
