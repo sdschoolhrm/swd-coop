@@ -1023,27 +1023,45 @@ g('saveTxBtn').addEventListener('click',function(){
   var txDate=v('txDate')||today();
   var by=v('txBy')||'ระบบ';
   var note=v('txNote');
+
+  // ── ถ้าชำระเงินกู้ คำนวนแยกต้น/ดอก ──
+  var principalAmt=amt, interestAmt=0, noteAuto=note;
+  if(type==='ชำระเงินกู้'){
+    for(var i=0;i<S.loans.length;i++){
+      var ln=S.loans[i];
+      if(ln.mid===mid && ln.status!=='ชำระครบ'){
+        // flat rate: ดอกต่องวด = เงินต้นเดิม × rate%
+        interestAmt = Math.round((ln.amount * (ln.rate/100)) * 100) / 100;
+        principalAmt = Math.round((amt - interestAmt) * 100) / 100;
+        if(principalAmt < 0){ principalAmt = amt; interestAmt = 0; } // ถ้ายอดน้อยกว่าดอก
+        noteAuto = (note ? note+' | ' : '') + 'ต้น '+fmt(principalAmt)+' + ดอก '+fmt(interestAmt);
+        break;
+      }
+    }
+  }
+
   var data={
     'วันที่':txDate,'รหัสสมาชิก':mid,'ชื่อ-สกุล':fullName(m),
-    'ประเภท':type,'จำนวน (บาท)':amt,'หมายเหตุ':note,'บันทึกโดย':by
+    'ประเภท':type,'จำนวน (บาท)':amt,
+    'เงินต้น (บาท)':principalAmt,'ดอกเบี้ย (บาท)':interestAmt,
+    'หมายเหตุ':noteAuto,'บันทึกโดย':by
   };
   apiPost('saveTransaction',data,function(){
-    // อัปเดต local state
     if(type==='ฝากหุ้น-ออมทรัพย์')m.shares+=amt;
     if(type==='ถอนหุ้น-ออมทรัพย์')m.shares=Math.max(0,m.shares-amt);
     if(type==='ชำระเงินกู้'){
       for(var i=0;i<S.loans.length;i++){
         if(S.loans[i].mid===mid&&S.loans[i].status!=='ชำระครบ'){
-          S.loans[i].outstanding=Math.max(0,S.loans[i].outstanding-amt);
+          // ตัดเฉพาะ "เงินต้น" ออกจากยอดคงค้าง
+          S.loans[i].outstanding=Math.max(0,Math.round((S.loans[i].outstanding-principalAmt)*100)/100);
           if(S.loans[i].outstanding===0)S.loans[i].status='ชำระครบ';
           break;
         }
       }
     }
-    S.transactions.push({date:txDate,mid:mid,name:fullName(m),type:type,amount:amt,note:note});
+    S.transactions.push({date:txDate,mid:mid,name:fullName(m),type:type,amount:amt,note:noteAuto});
     persist();renderAll();
-    // แสดงใบเสร็จ
-    showReceipt({name:fullName(m),id:mid,type:type,amount:amt,date:txDate,note:note,by:by});
+    showReceipt({name:fullName(m),id:mid,type:type,amount:amt,principal:principalAmt,interest:interestAmt,date:txDate,note:noteAuto,by:by});
     g('clearTxBtn').click();
   });
 });
@@ -1058,15 +1076,21 @@ g('clearTxBtn').addEventListener('click',function(){
 // ══════════════════════════════════════
 function showReceipt(d){
   var rcNo='RC-'+new Date().getFullYear().toString().slice(-2)+'-'+Date.now().toString().slice(-5);
+  var isLoan = d.type==='ชำระเงินกู้';
+  var breakdown = isLoan && d.interest > 0
+    ? '<div class="rrow"><span style="color:#888">&#8627; ตัดเงินต้น</span><span style="color:var(--bl)">'+fmt(d.principal)+'</span></div>'+
+      '<div class="rrow"><span style="color:#888">&#8627; ดอกเบี้ย</span><span style="color:var(--am)">'+fmt(d.interest)+'</span></div>'
+    : '';
   si('receiptBody',
     '<div class="rrow"><span style="color:#888">เลขที่ใบเสร็จ</span><span style="font-weight:600">'+rcNo+'</span></div>'+
     '<div class="rrow"><span style="color:#888">วันที่</span><span>'+formatThaiDate(d.date)+'</span></div>'+
     '<div class="rrow"><span style="color:#888">ชื่อผู้ชำระ</span><span>'+d.name+'</span></div>'+
     '<div class="rrow"><span style="color:#888">รหัสสมาชิก</span><span>'+d.id+'</span></div>'+
     '<div class="rrow"><span style="color:#888">ประเภทรายการ</span><span>'+d.type+'</span></div>'+
-    (d.note?'<div class="rrow"><span style="color:#888">หมายเหตุ</span><span>'+d.note+'</span></div>':'')+
+    breakdown+
+    (d.note?'<div class="rrow"><span style="color:#888">หมายเหตุ</span><span style="font-size:11px">'+d.note+'</span></div>':'')+
     '<div class="rrow"><span style="color:#888">บันทึกโดย</span><span>'+d.by+'</span></div>'+
-    '<div class="rtotal"><span>จำนวนเงิน</span><span style="color:#1a6b4a">'+fmt(d.amount)+'</span></div>'
+    '<div class="rtotal"><span>ยอดชำระรวม</span><span style="color:#1a6b4a">'+fmt(d.amount)+'</span></div>'
   );
   var r=g('receipt');if(r)r.className='on';
 }
