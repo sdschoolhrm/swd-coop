@@ -607,8 +607,16 @@ function sv(id,val){var e=g(id);if(e)e.value=val;}
 function si(id,html){var e=g(id);if(e)e.innerHTML=html;}
 function st(id,txt){var e=g(id);if(e)e.textContent=String(txt);}
 
-function fmt(n){return '฿'+Math.round(n||0).toLocaleString('th-TH');}
-function fmtS(n){return '฿'+Math.round(n||0).toLocaleString('th-TH');}
+function fmt(n){
+  n=n||0;
+  var r=Math.round(n*100)/100;
+  return '฿'+r.toLocaleString('th-TH',{minimumFractionDigits:r%1===0?0:2,maximumFractionDigits:2});
+}
+function fmtS(n){
+  n=n||0;
+  var r=Math.round(n*100)/100;
+  return '฿'+r.toLocaleString('th-TH',{minimumFractionDigits:r%1===0?0:2,maximumFractionDigits:2});
+}
 function today(){return new Date().toISOString().split('T')[0];}
 function fullName(m){return (m.prefix||'')+(m.fname||'')+' '+(m.lname||'');}
 function findM(id){for(var i=0;i<S.members.length;i++){if(S.members[i].id===id)return S.members[i];}return null;}
