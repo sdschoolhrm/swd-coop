@@ -710,9 +710,12 @@ function doSync(){
         type:r['ประเภท']||'',amount:parseFloat(r['จำนวน (บาท)'])||0,note:r['หมายเหตุ']||''};
     });
     S.loans=((d.loans)||[]).map(function(r){
+      // รองรับชื่อ column ทั้งแบบเก่า (%/ปี) และใหม่ (%/เดือน)
+      var rateRaw = r['ดอกเบี้ย (%/เดือน)'] !== undefined ? r['ดอกเบี้ย (%/เดือน)'] : r['ดอกเบี้ย (%/ปี)'];
+      var rateVal = (rateRaw !== undefined && rateRaw !== null && rateRaw !== '') ? parseFloat(rateRaw) : 0;
       return{loanId:String(r['รหัสการกู้']||''),mid:String(r['รหัสสมาชิก']||''),name:r['ชื่อ-สกุล']||'',
         amount:parseFloat(r['วงเงิน (บาท)'])||0,outstanding:parseFloat(r['ยอดคงค้าง (บาท)'])||0,
-        rate:parseFloat(r['ดอกเบี้ย (%/เดือน)']) || 0,term:parseInt(r['จำนวนงวด'])||12,
+        rate:isNaN(rateVal)?0:rateVal,term:parseInt(r['จำนวนงวด'])||12,
         date:r['วันที่กู้']||'',dueDate:r['วันครบงวดแรก']||'',
         purpose:r['วัตถุประสงค์']||'',status:r['สถานะ']||'กำลังผ่อน'};
     });
