@@ -1392,15 +1392,23 @@ function renderDvNetProfit() {
   if(lbl) lbl.textContent = year==='all' ? 'ทุกปี (สะสม)' : 'ปี '+year+' (1 พ.ค.'+year+' – 30 เม.ย.'+(parseInt(year)+1)+')';
   if(rng) rng.textContent = year==='all' ? '' : '1 พ.ค.'+year+' – 30 เม.ย.'+(parseInt(year)+1);
 
-  // ดอกเบี้ยรับ: flat rate ต่องวดชำระในรอบปีนี้
+  // ดอกเบี้ยรับ: ดูจากแต่ละรายการชำระ × ดอกต่องวดของ loan ที่ตรงกัน
   var interestReceived = 0;
   tx.filter(function(t){ return t.type==='ชำระเงินกู้'; }).forEach(function(t){
-    var ln = null;
-    for(var i=0; i<S.loans.length; i++){
-      if(S.loans[i].mid===t.mid){ ln=S.loans[i]; break; }
+    // หา loan ที่กำลัง active ของ member นี้ (ล่าสุดที่ยังไม่ชำระครบ หรือ loan ล่าสุด)
+    var matchLoan = null;
+    // ลอง match กับ loan ที่ mid ตรงและ date ของ loan <= date ของ tx
+    var candidates = S.loans.filter(function(l){ return l.mid===t.mid; });
+    // เรียงจากเก่าสุด หา loan ที่กู้ก่อนหรือเท่ากับวันชำระ
+    candidates.sort(function(a,b){ return new Date(a.date)-new Date(b.date); });
+    for(var i=candidates.length-1; i>=0; i--){
+      if(!candidates[i].date || new Date(candidates[i].date) <= new Date(t.date)){
+        matchLoan = candidates[i]; break;
+      }
     }
-    if(ln && (ln.rate||0) > 0 && (ln.amount||0) > 0){
-      interestReceived += Math.round((ln.amount*(ln.rate/100))*100)/100;
+    if(!matchLoan && candidates.length) matchLoan = candidates[candidates.length-1];
+    if(matchLoan && (matchLoan.rate||0) > 0 && (matchLoan.amount||0) > 0){
+      interestReceived += Math.round((matchLoan.amount*(matchLoan.rate/100))*100)/100;
     }
   });
   interestReceived = Math.round(interestReceived*100)/100;
@@ -1452,19 +1460,32 @@ g('useNetProfitBtn').addEventListener('click', function(){
 });
 
 g('calcDivBtn').addEventListener('click',function(){
-  var profit=parseFloat(v('dvProfit'))||0;
-  var rate  =parseFloat(v('dvRate'))||5;
-  var rr    =parseFloat(v('dvRes'))||10;
-  var or    =parseFloat(v('dvOtherPct'))||5;
-  var startStr=v('dvStart');
+  var profit   = parseFloat(v('dvProfit'))||0;
+  var rate     = parseFloat(v('dvRate'))||5;
+  var rr       = parseFloat(v('dvRes'))||10;
+  var or       = parseFloat(v('dvOtherPct'))||5;
+  var startStr = v('dvStart');
   if(!startStr){toast('กรุณาเลือกวันเริ่มต้นรอบบัญชี',true);return;}
-  var startDate=new Date(startStr);
-  var endDate  =new Date(startDate.getFullYear(),11,31); // 31 ธ.ค.
+  var startDate = new Date(startStr);
+  // รอบปีสหกรณ์ 1 พ.ค. – 30 เม.ย. ปีถัดไป
+  var endDate = new Date(startDate.getFullYear()+1, 3, 30); // 30 เม.ย. ปีถัดไป
 
-  var ts=S.members.reduce(function(s,m){return s+(m.shares||0);},0);
-  var reserve=profit*rr/100;
-  var otherRes=profit*or/100;
-  var dist=profit-reserve-otherRes;
+  // ทุนเรือนหุ้นรวม (หุ้น-ออมทรัพย์)
+  var tsShares = S.members.reduce(function(s,m){return s+(m.shares||0);},0);
+  // ทุน PF รวม (บุคลากร + รร.สมทบ) แต่ละคน
+  var pfAmtsMap = {};
+  S.members.forEach(function(m){
+    var staff  = S.transactions.filter(function(t){return t.mid===m.id&&t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
+    var school = S.transactions.filter(function(t){return t.mid===m.id&&t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
+    pfAmtsMap[m.id] = {staff:staff, school:school, total:staff+school};
+  });
+  var tsPF = S.members.reduce(function(s,m){ return s+(pfAmtsMap[m.id]?pfAmtsMap[m.id].total:0); },0);
+  var tsAll = tsShares + tsPF;
+
+  var reserve  = profit*rr/100;
+  var otherRes = profit*or/100;
+  var dist     = profit - reserve - otherRes;
+  var totalDays = Math.round((endDate-startDate)/86400000)+1;
 
   si('dvResult',
     '<div class="dvr"><div class="dvt">ผลคำนวน — ปี '+v('dvYear')+'</div>'+
@@ -1473,23 +1494,37 @@ g('calcDivBtn').addEventListener('click',function(){
     '<div><div class="dvl">หักสำรองรวม</div><div class="dvv">'+fmt(reserve+otherRes)+'</div></div>'+
     '<div><div class="dvl">เงินที่จ่ายได้</div><div class="dvv">'+fmt(dist)+'</div></div>'+
     '<div><div class="dvl">อัตราปันผล</div><div class="dvv" style="color:var(--g)">'+rate+'%/ปี</div></div>'+
-    '<div><div class="dvl">ทุนหุ้นรวม</div><div class="dvv">'+fmt(ts)+'</div></div>'+
-    '<div><div class="dvl">รอบบัญชี</div><div class="dvv" style="font-size:12px">'+formatThaiDate(startStr)+' – 31 ธ.ค.</div></div>'+
+    '<div><div class="dvl">ทุนหุ้น+PF รวม</div><div class="dvv">'+fmt(tsAll)+'</div></div>'+
+    '<div><div class="dvl">รอบบัญชี</div><div class="dvv" style="font-size:11px">'+formatThaiDate(startStr)+' – 30 เม.ย.</div></div>'+
     '</div></div>'
   );
 
-  // ปันผล = หุ้น × (rate/100) × (วันที่ถือ / 365)
-  si('dvTable',S.members.length
-    ?S.members.map(function(m){
-      var joinDate=m.joined?new Date(m.joined):startDate;
-      var effStart=joinDate>startDate?joinDate:startDate;
-      var days=Math.max(0,Math.round((endDate-effStart)/86400000)+1);
-      var div=(m.shares||0)*(rate/100)*(days/365);
-      return'<tr><td>'+fullName(m)+'</td><td>'+fmt(m.shares)+'</td>'+
-        '<td style="color:var(--t2)">'+days+' วัน</td>'+
-        '<td style="color:var(--g);font-weight:700">'+fmt(div)+'</td></tr>';
-    }).join('')
-    :'<tr><td colspan="4" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มีสมาชิก</td></tr>');
+  // ปันผล = (หุ้น+PF) × (rate/100) × (วันถือ/365)
+  // อัปเดต thead ให้มีคอลัมน์ PF
+  var thead = '<tr><th>ชื่อ</th><th>หุ้นออมทรัพย์</th><th>PF รวม</th><th>รวมทุน</th><th>วันถือ</th><th>ปันผล</th></tr>';
+  var tbl = g('dvTable');
+  var thead_el = tbl ? tbl.closest('table').querySelector('thead') : null;
+  if(thead_el) thead_el.innerHTML = thead;
+
+  si('dvTable', S.members.length
+    ? S.members.map(function(m){
+        var joinDate = m.joined ? new Date(m.joined) : startDate;
+        var effStart = joinDate > startDate ? joinDate : startDate;
+        var days     = Math.max(0, Math.round((endDate-effStart)/86400000)+1);
+        var pf       = pfAmtsMap[m.id] ? pfAmtsMap[m.id].total : 0;
+        var totalCap = (m.shares||0) + pf;
+        var div      = totalCap * (rate/100) * (days/365);
+        return '<tr>'+
+          '<td>'+fullName(m)+'</td>'+
+          '<td>'+fmt(m.shares||0)+'</td>'+
+          '<td style="color:#5b21b6">'+fmt(pf)+'</td>'+
+          '<td style="font-weight:600">'+fmt(totalCap)+'</td>'+
+          '<td style="color:var(--t2)">'+days+' วัน</td>'+
+          '<td style="color:var(--g);font-weight:700">'+fmt(div)+'</td>'+
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มีสมาชิก</td></tr>'
+  );
 });
 
 // ══════════════════════════════════════
@@ -1979,16 +2014,19 @@ function renderFin() {
   // ── ยอด 2: สินทรัพย์คงเหลือ (ยกเว้นลงทุนในธุรกิจ) ──
   var asset = totalIn - saveOut - loanOut - expExInv;
   // ── กำไรสุทธิ = ดอกเบี้ยรับ + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน ──
-  // คำนวนดอกเบี้ยรับจากแต่ละงวดที่บันทึก: flat rate = เงินต้นเดิม × rate% ต่องวด
   var intReceived = 0;
   tx.filter(function(t){ return t.type==='ชำระเงินกู้'; }).forEach(function(t){
-    var ln = null;
-    for(var i=0; i<S.loans.length; i++){
-      if(S.loans[i].mid===t.mid && S.loans[i].status!=='ชำระครบ'){ ln=S.loans[i]; break; }
-      if(S.loans[i].mid===t.mid){ ln=S.loans[i]; } // fallback ถ้าชำระครบแล้ว
+    var candidates = S.loans.filter(function(l){ return l.mid===t.mid; });
+    candidates.sort(function(a,b){ return new Date(a.date)-new Date(b.date); });
+    var matchLoan = null;
+    for(var i=candidates.length-1; i>=0; i--){
+      if(!candidates[i].date || new Date(candidates[i].date) <= new Date(t.date)){
+        matchLoan = candidates[i]; break;
+      }
     }
-    if(ln && (ln.rate||0) > 0 && (ln.amount||0) > 0){
-      intReceived += Math.round((ln.amount*(ln.rate/100))*100)/100;
+    if(!matchLoan && candidates.length) matchLoan = candidates[candidates.length-1];
+    if(matchLoan && (matchLoan.rate||0) > 0 && (matchLoan.amount||0) > 0){
+      intReceived += Math.round((matchLoan.amount*(matchLoan.rate/100))*100)/100;
     }
   });
   intReceived = Math.round(intReceived*100)/100;
