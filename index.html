@@ -376,7 +376,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-size:11px;font-weight:700;color:#5b21b6;margin-bottom:4px">&#128200; กำไรสุทธิ</div>
-        <div style="font-size:10px;color:var(--t2)">ดอกเบี้ยรับ − ค่าใช้จ่ายดำเนินงาน (ไม่รวมการลงทุน)</div>
+        <div style="font-size:10px;color:var(--t2)">ดอกเบี้ยรับ + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน (ไม่รวมการลงทุน)</div>
       </div>
       <div id="finProfit" style="font-size:22px;font-weight:800;color:#5b21b6">–</div>
     </div>
@@ -476,7 +476,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     <div style="font-size:13px;font-weight:700;color:var(--bl);margin-bottom:10px">&#128200; กำไรสุทธิจากระบบ (คำนวนอัตโนมัติ)</div>
     <div class="sg3" style="margin-bottom:10px">
       <div style="background:#fff;border-radius:var(--r);padding:10px;text-align:center;border:.5px solid #bfdbfe">
-        <div style="font-size:10px;color:#1e40af">ดอกเบี้ยรับรวม</div>
+        <div style="font-size:10px;color:#1e40af">ดอกเบี้ยรับ + รายได้อื่นๆ</div>
         <div id="dvIntReceived" style="font-size:14px;font-weight:800;color:#1e40af;margin-top:3px">–</div>
       </div>
       <div style="background:#fff;border-radius:var(--r);padding:10px;text-align:center;border:.5px solid #bfdbfe">
@@ -627,7 +627,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
     <!-- ยอดที่ 2: กำไรสุทธิ -->
     <div style="background:var(--bg2);border-radius:var(--r2);padding:14px;margin-bottom:14px">
       <div style="font-size:11px;color:var(--t2);margin-bottom:4px">&#128200; กำไรสุทธิ (ดอกเบี้ยรับ − ค่าใช้จ่าย)</div>
-      <div style="font-size:10px;color:var(--t2);margin-bottom:8px">(ดอกเบี้ยรับ − ค่าใช้จ่ายดำเนินงาน) <b>ไม่รวมการลงทุน/ฝากธนาคาร/ซื้อสินทรัพย์</b></div>
+      <div style="font-size:10px;color:var(--t2);margin-bottom:8px">(ดอกเบี้ยรับ + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน) <b>ไม่รวมการลงทุน/ฝากธนาคาร/ซื้อสินทรัพย์</b></div>
       <div id="balProfit" style="font-size:26px;font-weight:800;color:var(--bl)">–</div>
     </div>
 
@@ -1329,11 +1329,12 @@ function renderDvNetProfit() {
   var totalPaidBack     = S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
   var principalPaidBack = S.loans.reduce(function(s,l){return s+((l.amount||0)-(l.outstanding||0));},0);
   var interestReceived  = Math.max(0, Math.round((totalPaidBack - principalPaidBack)*100)/100);
+  var otherIncome       = S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
   // หักเฉพาะค่าใช้จ่ายดำเนินงาน — ไม่รวมการลงทุน/ฝากธนาคาร/ซื้อสินทรัพย์
   var opExp = S.expenses
     .filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; })
     .reduce(function(s,e){ return s+(e.amount||0); }, 0);
-  var netProfit = Math.round((interestReceived - opExp)*100)/100;
+  var netProfit = Math.round((interestReceived + otherIncome - opExp)*100)/100;
 
   st('dvIntReceived', fmt(interestReceived));
   st('dvOpExp',       fmt(opExp));
@@ -1543,14 +1544,12 @@ g('showBalanceBtn').addEventListener('click', function(){
   // รับเข้าทั้งหมด − ถอนหุ้น − รายจ่ายออก − เงินกู้ที่ปล่อยออกไป
   var cash = (b.totalIn||0) - (b.saveOut||0) - (b.expOut||0) - (b.loanOut||0);
 
-  // ── 2. กำไรสุทธิ = ดอกเบี้ยที่รับจริง − ค่าใช้จ่ายดำเนินงาน ──
-  // ดอกเบี้ยรับ = ยอดชำระทั้งหมด − เงินต้นที่ได้คืน (= ยอดกู้ต้น − ยอดคงค้างปัจจุบัน)
-  var totalPaidBack   = b.loanIn  || 0;
+  // ── 2. กำไรสุทธิ = ดอกเบี้ยรับ + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน ──
+  var totalPaidBack    = b.loanIn || 0;
   var principalPaidBack = S.loans.reduce(function(s,l){ return s + ((l.amount||0) - (l.outstanding||0)); }, 0);
   var interestReceived  = Math.max(0, totalPaidBack - principalPaidBack);
-  // ค่าใช้จ่ายดำเนินงาน = รายจ่ายออกประเภท "ค่าใช้จ่ายดำเนินงาน"
   var opExp = S.expenses.filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; }).reduce(function(s,e){ return s+(e.amount||0); }, 0);
-  var profit = interestReceived - opExp;
+  var profit = interestReceived + (b.other||0) - opExp;
 
   var totIn  = b.totalIn  || 0;
   var totOut = b.totalOut || 0;
@@ -1823,10 +1822,10 @@ function renderFin() {
   var cash  = totalIn - saveOut - loanOut - expAll;
   // ── ยอด 2: สินทรัพย์คงเหลือ (ยกเว้นลงทุนในธุรกิจ) ──
   var asset = totalIn - saveOut - loanOut - expExInv;
-  // ── กำไรสุทธิ ──
+  // ── กำไรสุทธิ = ดอกเบี้ยรับ + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน ──
   var principalBack = S.loans.reduce(function(s,l){return s+((l.amount||0)-(l.outstanding||0));},0);
   var intReceived   = Math.max(0, loanIn - principalBack);
-  var profit        = intReceived - expOp;
+  var profit        = intReceived + other - expOp;
 
   // แสดงยอดหลัก
   var cashEl  = g('finCash');  if(cashEl){  cashEl.textContent  = fmt(cash);   cashEl.style.color  = cash>=0  ?'#15803d':'var(--rd)'; }
@@ -1836,13 +1835,22 @@ function renderFin() {
   // รับเข้า rows
   st('finTotalIn', fmt(totalIn));
   si('finInRows',
-    finRow('ฝากหุ้น-ออมทรัพย์',    saveIn,   '#16a34a') +
-    finRow('PF บุคลากร',            pfStaff,  '#16a34a') +
-    finRow('PF โรงเรียน',           pfSchool, '#16a34a') +
-    finRow('รายได้อื่นๆ',            other,    '#16a34a') +
-    finRow('รับชำระหนี้ (รวมดอก)',   loanIn,   '#16a34a') +
-    finRow('  └ ดอกเบี้ยรับ (ประมาณ)', intReceived, '#2563eb') +
-    finRow('รวมรับเข้า', totalIn, '#16a34a', true)
+    finRow('ฝากหุ้น-ออมทรัพย์',        saveIn,       '#16a34a') +
+    finRow('PF บุคลากร',                pfStaff,      '#16a34a') +
+    finRow('PF โรงเรียน',               pfSchool,     '#16a34a') +
+    finRow('รายได้อื่นๆ',                other,        '#16a34a') +
+    finRow('รับชำระหนี้ (รวมดอก)',       loanIn,       '#16a34a') +
+    finRow('  └ ดอกเบี้ยรับ (ประมาณ)',   intReceived,  '#2563eb') +
+    finRow('รวมรับเข้า',                 totalIn,      '#16a34a', true) +
+    '<div style="background:#f5f3ff;border-radius:6px;padding:8px;margin-top:8px;font-size:11px">' +
+      '<div style="display:flex;justify-content:space-between;color:#5b21b6;font-weight:600">' +
+        '<span>กำไรสุทธิ (ดอกเบี้ย + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน)</span>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;color:#5b21b6;font-weight:800;font-size:14px;margin-top:4px">' +
+        '<span>'+fmt(intReceived)+' + '+fmt(other)+' − '+fmt(expOp)+'</span>' +
+        '<span>'+fmt(profit)+'</span>' +
+      '</div>' +
+    '</div>'
   );
 
   // จ่ายออก rows
