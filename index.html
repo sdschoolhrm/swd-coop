@@ -351,6 +351,17 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
 <div id="pn-fin" class="pn">
   <div class="st">สรุปการเงินสหกรณ์</div>
 
+  <!-- filter ปี -->
+  <div class="card" style="padding:10px 14px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">&#128197; แสดงข้อมูลปี พ.ศ.:</div>
+      <select id="finYear" style="flex:1;min-width:120px;margin-bottom:0;font-size:13px">
+        <option value="all">ทุกปี (สะสม)</option>
+      </select>
+      <div style="font-size:11px;color:var(--t2)" id="finYearRange"></div>
+    </div>
+  </div>
+
   <!-- 2 ยอดหลัก -->
   <div class="r2" style="margin-bottom:12px">
     <!-- ยอด 1: เงินสดคงเหลือ -->
@@ -399,6 +410,26 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
   <div class="card" style="padding:0"><div class="tw"><table>
     <thead><tr><th>วันที่</th><th>ประเภท</th><th>จำนวน</th><th>ผู้อนุมัติ</th><th>หมายเหตุ</th></tr></thead>
     <tbody id="finExpTable"></tbody>
+  </table></div></div>
+
+  <!-- Snapshot รายปี -->
+  <div class="st" style="margin-top:8px">&#128190; บันทึก Snapshot กำไรรายปี</div>
+  <div class="card" style="border:.5px solid #c4b5fd">
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">บันทึก snapshot กำไรสุทธิของปีที่เลือกไว้อ้างอิงสำหรับการปันผล</div>
+    <div class="r2">
+      <div><label class="fl">ปี พ.ศ.</label><input id="snapYear" type="number" placeholder="2568" min="2560"></div>
+      <div><label class="fl">กำไรสุทธิ (อัตโนมัติจากตัวกรอง)</label><input id="snapProfit" type="number" readonly style="background:var(--bg2)"></div>
+    </div>
+    <label class="fl">หมายเหตุ</label>
+    <input id="snapNote" type="text" placeholder="เช่น กำไรปี 2568 ก่อนหักสำรอง">
+    <div class="brow">
+      <button class="btn" style="background:#7c3aed;color:#fff;border-color:#7c3aed" id="saveSnapshotBtn">&#128190; บันทึก Snapshot</button>
+    </div>
+  </div>
+  <div class="st">ประวัติ Snapshot รายปี</div>
+  <div class="card" style="padding:0"><div class="tw"><table>
+    <thead><tr><th>ปี พ.ศ.</th><th>กำไรสุทธิ</th><th>วันที่บันทึก</th><th>หมายเหตุ</th><th></th></tr></thead>
+    <tbody id="snapTable"></tbody>
   </table></div></div>
 </div>
 
@@ -789,12 +820,14 @@ var S={
   transactions:JSON.parse(localStorage.getItem('swd_tx')||'[]'),
   loans:       JSON.parse(localStorage.getItem('swd_ln')||'[]'),
   expenses:    JSON.parse(localStorage.getItem('swd_ex')||'[]'),
+  snapshots:   JSON.parse(localStorage.getItem('swd_snap')||'[]'),
 };
 function persist(){
-  localStorage.setItem('swd_m', JSON.stringify(S.members));
-  localStorage.setItem('swd_tx',JSON.stringify(S.transactions));
-  localStorage.setItem('swd_ln',JSON.stringify(S.loans));
-  localStorage.setItem('swd_ex',JSON.stringify(S.expenses));
+  localStorage.setItem('swd_m',    JSON.stringify(S.members));
+  localStorage.setItem('swd_tx',   JSON.stringify(S.transactions));
+  localStorage.setItem('swd_ln',   JSON.stringify(S.loans));
+  localStorage.setItem('swd_ex',   JSON.stringify(S.expenses));
+  localStorage.setItem('swd_snap', JSON.stringify(S.snapshots));
 }
 
 // ══════════════════════════════════════
@@ -1789,6 +1822,44 @@ document.addEventListener('click',function(e){
 // Init
 // ══════════════════════════════════════
 // ══════════════════════════════════════
+// Finance tab — year filter helpers
+// ══════════════════════════════════════
+function thYearToGreg(thYear){ return thYear - 543; }
+function gregToThYear(date){ return new Date(date).getFullYear() + 543; }
+
+function getAvailableYears(){
+  var years = {};
+  S.transactions.forEach(function(t){ if(t.date) years[gregToThYear(t.date)] = 1; });
+  S.expenses.forEach(function(e){ if(e.date) years[gregToThYear(e.date)] = 1; });
+  return Object.keys(years).map(Number).sort();
+}
+
+function populateYearFilter(){
+  var sel = g('finYear'); if(!sel) return;
+  var cur = sel.value || 'all';
+  var yrs = getAvailableYears();
+  sel.innerHTML = '<option value="all">ทุกปี (สะสม)</option>' +
+    yrs.map(function(y){ return '<option value="'+y+'">'+y+'</option>'; }).join('');
+  sel.value = cur;
+}
+
+function filterByYear(arr, year){
+  if(year === 'all') return arr;
+  var y = parseInt(year);
+  return arr.filter(function(item){
+    if(!item.date) return false;
+    return gregToThYear(item.date) === y;
+  });
+}
+
+function renderFinYearRange(year){
+  var el = g('finYearRange'); if(!el) return;
+  if(year === 'all'){ el.textContent = ''; return; }
+  var greg = thYearToGreg(parseInt(year));
+  el.textContent = greg+'-01-01 ถึง '+greg+'-12-31';
+}
+
+// ══════════════════════════════════════
 // Finance tab
 // ══════════════════════════════════════
 function finRow(label, amt, color, bold) {
@@ -1799,23 +1870,32 @@ function finRow(label, amt, color, bold) {
 }
 
 function renderFin() {
+  populateYearFilter();
+  var year = v('finYear') || 'all';
+  renderFinYearRange(year);
+
+  var tx  = filterByYear(S.transactions, year);
+  var exp = filterByYear(S.expenses, year);
+
   // ── รับเข้า ──
-  var saveIn   = S.transactions.filter(function(t){return t.type==='ฝากหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
-  var pfStaff  = S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
-  var pfSchool = S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
-  var other    = S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
-  var loanIn   = S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
+  var saveIn   = tx.filter(function(t){return t.type==='ฝากหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
+  var pfStaff  = tx.filter(function(t){return t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
+  var pfSchool = tx.filter(function(t){return t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
+  var other    = tx.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
+  var loanIn   = tx.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
   var totalIn  = saveIn + pfStaff + pfSchool + other + loanIn;
 
   // ── จ่ายออก ──
-  var saveOut  = S.transactions.filter(function(t){return t.type==='ถอนหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
-  var loanOut  = S.loans.reduce(function(s,l){return s+(l.amount||0);},0);
-  var expAll   = S.expenses.reduce(function(s,e){return s+(e.amount||0);},0);
-  // รายจ่ายยกเว้นประเภท "ลงทุนในธุรกิจ"
-  var expExInv = S.expenses.filter(function(e){return e.type!=='ลงทุนในธุรกิจ';}).reduce(function(s,e){return s+(e.amount||0);},0);
-  var expInv   = S.expenses.filter(function(e){return e.type==='ลงทุนในธุรกิจ';}).reduce(function(s,e){return s+(e.amount||0);},0);
-  var expOp    = S.expenses.filter(function(e){return e.type==='ค่าใช้จ่ายดำเนินงาน';}).reduce(function(s,e){return s+(e.amount||0);},0);
-  var expOther = S.expenses.filter(function(e){return e.type!=='ลงทุนในธุรกิจ'&&e.type!=='ค่าใช้จ่ายดำเนินงาน';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var saveOut  = tx.filter(function(t){return t.type==='ถอนหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
+  // เงินกู้ปล่อยออก: ถ้า filter ปี ให้ดูจาก loans ที่กู้ในปีนั้น ถ้า all ใช้ทั้งหมด
+  var loanOut  = year === 'all'
+    ? S.loans.reduce(function(s,l){return s+(l.amount||0);},0)
+    : S.loans.filter(function(l){ return l.date && gregToThYear(l.date)===parseInt(year); }).reduce(function(s,l){return s+(l.amount||0);},0);
+  var expAll   = exp.reduce(function(s,e){return s+(e.amount||0);},0);
+  var expExInv = exp.filter(function(e){return e.type!=='ลงทุนในธุรกิจ';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var expInv   = exp.filter(function(e){return e.type==='ลงทุนในธุรกิจ';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var expOp    = exp.filter(function(e){return e.type==='ค่าใช้จ่ายดำเนินงาน';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var expOther = exp.filter(function(e){return e.type!=='ลงทุนในธุรกิจ'&&e.type!=='ค่าใช้จ่ายดำเนินงาน';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var totalOut = saveOut + loanOut + expAll;
 
   // ── ยอด 1: เงินสดคงเหลือ (หักทุกประเภท) ──
@@ -1871,8 +1951,8 @@ function renderFin() {
     '</div>'
   );
 
-  // ตารางรายจ่ายออก
-  var expRows = S.expenses.slice().reverse().slice(0,20);
+  // ตารางรายจ่ายออก (ตาม filter ปี)
+  var expRows = exp.slice().reverse().slice(0,20);
   si('finExpTable', expRows.length
     ? expRows.map(function(e){
         return '<tr>' +
@@ -1885,7 +1965,72 @@ function renderFin() {
       }).join('')
     : '<tr><td colspan="5" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มีรายการจ่ายออก</td></tr>'
   );
+
+  // ป้อนกำไรสุทธิลง snapshot form อัตโนมัติ
+  sv('snapProfit', Math.round(profit*100)/100);
+  if(year !== 'all') sv('snapYear', year);
+
+  // แสดงตาราง snapshot
+  renderSnapshots();
 }
+
+// year filter change
+(function(){
+  var sel = g('finYear');
+  if(sel) sel.addEventListener('change', function(){ renderFin(); });
+})();
+
+// ── Snapshot ──
+function renderSnapshots(){
+  si('snapTable', S.snapshots.length
+    ? S.snapshots.slice().reverse().map(function(s,i){
+        var idx = S.snapshots.length - 1 - i;
+        return '<tr>'+
+          '<td style="font-weight:700">'+s.year+'</td>'+
+          '<td style="color:#5b21b6;font-weight:700">'+fmt(s.profit)+'</td>'+
+          '<td style="color:var(--t2);font-size:11px">'+s.date+'</td>'+
+          '<td style="color:var(--t2);font-size:11px">'+(s.note||'–')+'</td>'+
+          '<td><button class="btn btns" style="font-size:10px;padding:2px 8px" data-action="useSnapshot" data-idx="'+idx+'">&#8594; ใช้ปันผล</button></td>'+
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--t2);padding:14px">ยังไม่มี Snapshot</td></tr>'
+  );
+}
+
+g('saveSnapshotBtn').addEventListener('click', function(){
+  var year   = v('snapYear');
+  var profit = parseFloat(v('snapProfit'));
+  if(!year){ toast('กรุณากรอกปี พ.ศ.',true); return; }
+  if(isNaN(profit)){ toast('ไม่มีข้อมูลกำไร',true); return; }
+  // ถ้ามี snapshot ปีนี้แล้วถามก่อน
+  var exists = S.snapshots.filter(function(s){ return String(s.year)===String(year); });
+  if(exists.length && !confirm('มี Snapshot ปี '+year+' แล้ว ต้องการบันทึกทับมั้ยครับ?')) return;
+  S.snapshots = S.snapshots.filter(function(s){ return String(s.year)!==String(year); });
+  S.snapshots.push({ year:parseInt(year), profit:profit, date:today(), note:v('snapNote') });
+  persist(); renderSnapshots();
+  toast('บันทึก Snapshot ปี '+year+' กำไร '+fmt(profit)+' ✓');
+  sv('snapNote','');
+});
+
+// คลิก "→ ใช้ปันผล" จาก snapshot → ส่งไปหน้าเงินปันผล
+document.addEventListener('click', function(e){
+  var btn = e.target.closest('[data-action="useSnapshot"]');
+  if(!btn) return;
+  var idx  = parseInt(btn.getAttribute('data-idx'));
+  var snap = S.snapshots[idx]; if(!snap) return;
+  // switch to dv tab
+  document.querySelectorAll('.nb').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.pn').forEach(function(p){ p.classList.remove('on'); });
+  var nb = document.querySelector('[data-tab="dv"]'); if(nb) nb.classList.add('on');
+  var pn = g('pn-dv'); if(pn) pn.classList.add('on');
+  // กรอกค่า
+  sv('dvYear',   snap.year);
+  sv('dvProfit', Math.round(snap.profit*100)/100);
+  sv('dvTotal',  S.members.reduce(function(s,m){ return s+(m.shares||0); }, 0));
+  var ds=g('dvStart'); if(ds&&!ds.value){ ds.value=(thYearToGreg(snap.year))+'-01-01'; }
+  renderDvNetProfit();
+  toast('โหลดกำไรปี '+snap.year+' เข้าหน้าเงินปันผลแล้ว ✓');
+});
 
 // ══════════════════════════════════════
 // Provident Fund
