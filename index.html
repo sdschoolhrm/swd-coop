@@ -502,9 +502,20 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
 <div id="pn-dv" class="pn">
   <div class="st">คำนวนเงินปันผลประจำปี (ตามจำนวนวัน)</div>
 
+  <!-- เลือกรอบปี -->
+  <div class="card" style="padding:10px 14px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">&#128197; รอบปีที่คำนวนปันผล:</div>
+      <select id="dvFiscalYear" style="flex:1;min-width:140px;margin-bottom:0;font-size:13px">
+        <option value="all">ทุกปี (สะสม)</option>
+      </select>
+      <div style="font-size:11px;color:var(--t2)" id="dvFiscalRange"></div>
+    </div>
+  </div>
+
   <!-- กำไรสุทธิจากระบบ -->
   <div class="card" style="border:.5px solid #93c5fd;background:linear-gradient(135deg,#eff6ff,#fff);margin-bottom:12px">
-    <div style="font-size:13px;font-weight:700;color:var(--bl);margin-bottom:10px">&#128200; กำไรสุทธิจากระบบ (คำนวนอัตโนมัติ)</div>
+    <div style="font-size:13px;font-weight:700;color:var(--bl);margin-bottom:10px">&#128200; กำไรสุทธิ — รอบปี <span id="dvFiscalLabel">ทุกปี</span></div>
     <div class="sg3" style="margin-bottom:10px">
       <div style="background:#fff;border-radius:var(--r);padding:10px;text-align:center;border:.5px solid #bfdbfe">
         <div style="font-size:10px;color:#1e40af">ดอกเบี้ยรับ + รายได้อื่นๆ</div>
@@ -944,8 +955,9 @@ navBtns.forEach(function(btn){
     if(tab==='fin')renderFin();
     if(tab==='dv'){
       sv('dvTotal',S.members.reduce(function(s,m){return s+(m.shares||0);},0));
-      var ds=g('dvStart');if(ds&&!ds.value){var yr=new Date().getFullYear();ds.value=yr+'-01-01';}
+      populateDvYearFilter();
       renderDvNetProfit();
+      var ds=g('dvStart');if(ds&&!ds.value){var yr=new Date().getFullYear();ds.value=yr+'-05-01';}
     }
   });
 });
@@ -1358,10 +1370,31 @@ g('sendNfBtn').addEventListener('click',function(){
 // Dividend (คำนวนตามจำนวนวัน)
 // ══════════════════════════════════════
 // ── คำนวนกำไรสุทธิจากระบบ ──
+function populateDvYearFilter(){
+  var sel = g('dvFiscalYear'); if(!sel) return;
+  var cur = sel.value || 'all';
+  var yrs = getAvailableYears();
+  sel.innerHTML = '<option value="all">ทุกปี (สะสม)</option>' +
+    yrs.map(function(y){
+      return '<option value="'+y+'">ปี '+y+' (1 พ.ค.'+y+' – 30 เม.ย.'+(y+1)+')</option>';
+    }).join('');
+  if(yrs.indexOf(parseInt(cur)) >= 0) sel.value = cur;
+}
+
 function renderDvNetProfit() {
-  // คำนวนดอกเบี้ยรับจาก flat rate: เงินต้นเดิม × rate% × จำนวนงวดที่ชำระ
+  var year = v('dvFiscalYear') || 'all';
+  var tx   = filterByYear(S.transactions, year);
+  var exp  = filterByYear(S.expenses, year);
+
+  // label
+  var lbl = g('dvFiscalLabel');
+  var rng = g('dvFiscalRange');
+  if(lbl) lbl.textContent = year==='all' ? 'ทุกปี (สะสม)' : 'ปี '+year+' (1 พ.ค.'+year+' – 30 เม.ย.'+(parseInt(year)+1)+')';
+  if(rng) rng.textContent = year==='all' ? '' : '1 พ.ค.'+year+' – 30 เม.ย.'+(parseInt(year)+1);
+
+  // ดอกเบี้ยรับ: flat rate ต่องวดชำระในรอบปีนี้
   var interestReceived = 0;
-  S.transactions.filter(function(t){ return t.type==='ชำระเงินกู้'; }).forEach(function(t){
+  tx.filter(function(t){ return t.type==='ชำระเงินกู้'; }).forEach(function(t){
     var ln = null;
     for(var i=0; i<S.loans.length; i++){
       if(S.loans[i].mid===t.mid){ ln=S.loans[i]; break; }
@@ -1371,8 +1404,9 @@ function renderDvNetProfit() {
     }
   });
   interestReceived = Math.round(interestReceived*100)/100;
-  var otherIncome = S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
-  var opExp = S.expenses.filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; }).reduce(function(s,e){ return s+(e.amount||0); }, 0);
+
+  var otherIncome = tx.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
+  var opExp = exp.filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; }).reduce(function(s,e){ return s+(e.amount||0); }, 0);
   var netProfit = Math.round((interestReceived + otherIncome - opExp)*100)/100;
 
   st('dvIntReceived', fmt(interestReceived));
@@ -1394,6 +1428,20 @@ function updateDvProfitPool() {
 }
 
 g('dvProfitPct').addEventListener('input', updateDvProfitPool);
+
+// fiscal year filter change → recalc
+(function(){
+  var sel = g('dvFiscalYear');
+  if(sel) sel.addEventListener('change', function(){
+    renderDvNetProfit();
+    // อัตโนมัติ: กรอกปีบัญชีและวันเริ่มต้นให้ตรงกัน
+    var y = sel.value;
+    if(y !== 'all'){
+      sv('dvYear', y);
+      sv('dvStart', thYearToGreg(parseInt(y))+'-05-01');
+    }
+  });
+})();
 
 g('useNetProfitBtn').addEventListener('click', function(){
   var pool = window._dvProfitPool || 0;
