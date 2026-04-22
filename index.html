@@ -1359,14 +1359,20 @@ g('sendNfBtn').addEventListener('click',function(){
 // ══════════════════════════════════════
 // ── คำนวนกำไรสุทธิจากระบบ ──
 function renderDvNetProfit() {
-  var totalPaidBack     = S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
-  var principalPaidBack = S.loans.reduce(function(s,l){return s+((l.amount||0)-(l.outstanding||0));},0);
-  var interestReceived  = Math.max(0, Math.round((totalPaidBack - principalPaidBack)*100)/100);
-  var otherIncome       = S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
-  // หักเฉพาะค่าใช้จ่ายดำเนินงาน — ไม่รวมการลงทุน/ฝากธนาคาร/ซื้อสินทรัพย์
-  var opExp = S.expenses
-    .filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; })
-    .reduce(function(s,e){ return s+(e.amount||0); }, 0);
+  // คำนวนดอกเบี้ยรับจาก flat rate: เงินต้นเดิม × rate% × จำนวนงวดที่ชำระ
+  var interestReceived = 0;
+  S.transactions.filter(function(t){ return t.type==='ชำระเงินกู้'; }).forEach(function(t){
+    var ln = null;
+    for(var i=0; i<S.loans.length; i++){
+      if(S.loans[i].mid===t.mid){ ln=S.loans[i]; break; }
+    }
+    if(ln && (ln.rate||0) > 0 && (ln.amount||0) > 0){
+      interestReceived += Math.round((ln.amount*(ln.rate/100))*100)/100;
+    }
+  });
+  interestReceived = Math.round(interestReceived*100)/100;
+  var otherIncome = S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
+  var opExp = S.expenses.filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; }).reduce(function(s,e){ return s+(e.amount||0); }, 0);
   var netProfit = Math.round((interestReceived + otherIncome - opExp)*100)/100;
 
   st('dvIntReceived', fmt(interestReceived));
@@ -1578,9 +1584,17 @@ g('showBalanceBtn').addEventListener('click', function(){
   var cash = (b.totalIn||0) - (b.saveOut||0) - (b.expOut||0) - (b.loanOut||0);
 
   // ── 2. กำไรสุทธิ = ดอกเบี้ยรับ + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน ──
-  var totalPaidBack    = b.loanIn || 0;
-  var principalPaidBack = S.loans.reduce(function(s,l){ return s + ((l.amount||0) - (l.outstanding||0)); }, 0);
-  var interestReceived  = Math.max(0, totalPaidBack - principalPaidBack);
+  var interestReceived = 0;
+  S.transactions.filter(function(t){ return t.type==='ชำระเงินกู้'; }).forEach(function(t){
+    var ln = null;
+    for(var i=0; i<S.loans.length; i++){
+      if(S.loans[i].mid===t.mid){ ln=S.loans[i]; break; }
+    }
+    if(ln && (ln.rate||0) > 0 && (ln.amount||0) > 0){
+      interestReceived += Math.round((ln.amount*(ln.rate/100))*100)/100;
+    }
+  });
+  interestReceived = Math.round(interestReceived*100)/100;
   var opExp = S.expenses.filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; }).reduce(function(s,e){ return s+(e.amount||0); }, 0);
   var profit = interestReceived + (b.other||0) - opExp;
 
@@ -1827,10 +1841,21 @@ document.addEventListener('click',function(e){
 function thYearToGreg(thYear){ return thYear - 543; }
 function gregToThYear(date){ return new Date(date).getFullYear() + 543; }
 
+// รอบปีสหกรณ์: 1 พ.ค. – 30 เม.ย. ของปีถัดไป
+// ปี 2568 = 1 พ.ค. 2568 (ค.ศ.2025) ถึง 30 เม.ย. 2569 (ค.ศ.2026)
+function dateToCoopYear(dateStr){
+  if(!dateStr) return null;
+  var d = new Date(dateStr);
+  var m = d.getMonth() + 1; // 1-12
+  var y = d.getFullYear() + 543; // พ.ศ.
+  // ม.ค.–เม.ย. (1–4) นับเป็นปีก่อนหน้า เช่น ม.ค. 2569 = รอบปี 2568
+  return m <= 4 ? y - 1 : y;
+}
+
 function getAvailableYears(){
   var years = {};
-  S.transactions.forEach(function(t){ if(t.date) years[gregToThYear(t.date)] = 1; });
-  S.expenses.forEach(function(e){ if(e.date) years[gregToThYear(e.date)] = 1; });
+  S.transactions.forEach(function(t){ if(t.date){ var y=dateToCoopYear(t.date); if(y) years[y]=1; }});
+  S.expenses.forEach(function(e){ if(e.date){ var y=dateToCoopYear(e.date); if(y) years[y]=1; }});
   return Object.keys(years).map(Number).sort();
 }
 
@@ -1839,24 +1864,27 @@ function populateYearFilter(){
   var cur = sel.value || 'all';
   var yrs = getAvailableYears();
   sel.innerHTML = '<option value="all">ทุกปี (สะสม)</option>' +
-    yrs.map(function(y){ return '<option value="'+y+'">'+y+'</option>'; }).join('');
-  sel.value = cur;
+    yrs.map(function(y){
+      var greg = thYearToGreg(y);
+      return '<option value="'+y+'">'+y+' (1 พ.ค.'+y+' – 30 เม.ย.'+(y+1)+')</option>';
+    }).join('');
+  sel.value = (yrs.indexOf(parseInt(cur)) >= 0 || cur === 'all') ? cur : 'all';
 }
 
 function filterByYear(arr, year){
   if(year === 'all') return arr;
   var y = parseInt(year);
   return arr.filter(function(item){
-    if(!item.date) return false;
-    return gregToThYear(item.date) === y;
+    return item.date && dateToCoopYear(item.date) === y;
   });
 }
 
 function renderFinYearRange(year){
   var el = g('finYearRange'); if(!el) return;
   if(year === 'all'){ el.textContent = ''; return; }
-  var greg = thYearToGreg(parseInt(year));
-  el.textContent = greg+'-01-01 ถึง '+greg+'-12-31';
+  var y = parseInt(year);
+  var greg = thYearToGreg(y);
+  el.textContent = '1 พ.ค. '+y+' (ค.ศ.'+greg+') – 30 เม.ย. '+(y+1)+' (ค.ศ.'+(greg+1)+')';
 }
 
 // ══════════════════════════════════════
@@ -1887,10 +1915,10 @@ function renderFin() {
 
   // ── จ่ายออก ──
   var saveOut  = tx.filter(function(t){return t.type==='ถอนหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
-  // เงินกู้ปล่อยออก: ถ้า filter ปี ให้ดูจาก loans ที่กู้ในปีนั้น ถ้า all ใช้ทั้งหมด
+  // เงินกู้ปล่อยออก: filter ตามรอบปีสหกรณ์
   var loanOut  = year === 'all'
     ? S.loans.reduce(function(s,l){return s+(l.amount||0);},0)
-    : S.loans.filter(function(l){ return l.date && gregToThYear(l.date)===parseInt(year); }).reduce(function(s,l){return s+(l.amount||0);},0);
+    : S.loans.filter(function(l){ return l.date && dateToCoopYear(l.date)===parseInt(year); }).reduce(function(s,l){return s+(l.amount||0);},0);
   var expAll   = exp.reduce(function(s,e){return s+(e.amount||0);},0);
   var expExInv = exp.filter(function(e){return e.type!=='ลงทุนในธุรกิจ';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var expInv   = exp.filter(function(e){return e.type==='ลงทุนในธุรกิจ';}).reduce(function(s,e){return s+(e.amount||0);},0);
@@ -1903,9 +1931,20 @@ function renderFin() {
   // ── ยอด 2: สินทรัพย์คงเหลือ (ยกเว้นลงทุนในธุรกิจ) ──
   var asset = totalIn - saveOut - loanOut - expExInv;
   // ── กำไรสุทธิ = ดอกเบี้ยรับ + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน ──
-  var principalBack = S.loans.reduce(function(s,l){return s+((l.amount||0)-(l.outstanding||0));},0);
-  var intReceived   = Math.max(0, loanIn - principalBack);
-  var profit        = intReceived + other - expOp;
+  // คำนวนดอกเบี้ยรับจากแต่ละงวดที่บันทึก: flat rate = เงินต้นเดิม × rate% ต่องวด
+  var intReceived = 0;
+  tx.filter(function(t){ return t.type==='ชำระเงินกู้'; }).forEach(function(t){
+    var ln = null;
+    for(var i=0; i<S.loans.length; i++){
+      if(S.loans[i].mid===t.mid && S.loans[i].status!=='ชำระครบ'){ ln=S.loans[i]; break; }
+      if(S.loans[i].mid===t.mid){ ln=S.loans[i]; } // fallback ถ้าชำระครบแล้ว
+    }
+    if(ln && (ln.rate||0) > 0 && (ln.amount||0) > 0){
+      intReceived += Math.round((ln.amount*(ln.rate/100))*100)/100;
+    }
+  });
+  intReceived = Math.round(intReceived*100)/100;
+  var profit  = intReceived + other - expOp;
 
   // แสดงยอดหลัก
   var cashEl  = g('finCash');  if(cashEl){  cashEl.textContent  = fmt(cash);   cashEl.style.color  = cash>=0  ?'#15803d':'var(--rd)'; }
@@ -2027,7 +2066,9 @@ document.addEventListener('click', function(e){
   sv('dvYear',   snap.year);
   sv('dvProfit', Math.round(snap.profit*100)/100);
   sv('dvTotal',  S.members.reduce(function(s,m){ return s+(m.shares||0); }, 0));
-  var ds=g('dvStart'); if(ds&&!ds.value){ ds.value=(thYearToGreg(snap.year))+'-01-01'; }
+  // วันเริ่มต้นรอบบัญชี = 1 พ.ค. ของปีนั้น (ค.ศ.)
+  var ds=g('dvStart');
+  if(ds){ ds.value = thYearToGreg(snap.year)+'-05-01'; }
   renderDvNetProfit();
   toast('โหลดกำไรปี '+snap.year+' เข้าหน้าเงินปันผลแล้ว ✓');
 });
