@@ -987,28 +987,28 @@ function txSum(keyword){
 }
 
 function renderDash(){
-  // ออมทรัพย์ = ฝาก - ถอน
-  var saveIn =S.transactions.filter(function(t){return t.type==='ฝากหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
-  var saveOut=S.transactions.filter(function(t){return t.type==='ถอนหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
-  var saves  =Math.max(0,saveIn-saveOut);
+  // ออมทรัพย์รวม = ดึงจาก m.shares ที่ sync จาก Sheet (source of truth)
+  var saves    = S.members.reduce(function(s,m){return s+(m.shares||0);},0);
+  var saveIn   = S.transactions.filter(function(t){return t.type==='ฝากหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
+  var saveOut  = S.transactions.filter(function(t){return t.type==='ถอนหุ้น-ออมทรัพย์';}).reduce(function(s,t){return s+t.amount;},0);
   // PF รวม
-  var pfStaff =S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
-  var pfSchool=S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
-  var pf=pfStaff+pfSchool;
+  var pfStaff  = S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund บุคลากร';}).reduce(function(s,t){return s+t.amount;},0);
+  var pfSchool = S.transactions.filter(function(t){return t.type==='ฝาก-Provident Fund โรงเรียน';}).reduce(function(s,t){return s+t.amount;},0);
+  var pf       = pfStaff + pfSchool;
   // รายได้อื่นๆ
-  var other=S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
-  // ชำระเงินกู้รับเข้า
-  var loanIn=S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
-  // รายจ่ายออก (ลงทุน)
-  var expOut=S.expenses.reduce(function(s,e){return s+(e.amount||0);},0);
-  // เงินกู้ที่ปล่อยออกไป (วงเงินทุกรายการ)
-  var loanOut=S.loans.reduce(function(s,l){return s+(l.amount||0);},0);
-  // หนี้
-  var debt=S.loans.filter(function(l){return l.status!=='ชำระครบ';}).reduce(function(s,l){return s+(l.outstanding||0);},0);
+  var other    = S.transactions.filter(function(t){return t.type==='รายได้อื่นๆ';}).reduce(function(s,t){return s+t.amount;},0);
+  // ชำระเงินกู้รับเข้า (ต้น+ดอก รวม)
+  var loanIn   = S.transactions.filter(function(t){return t.type==='ชำระเงินกู้';}).reduce(function(s,t){return s+t.amount;},0);
+  // รายจ่ายออก
+  var expOut   = S.expenses.reduce(function(s,e){return s+(e.amount||0);},0);
+  // เงินกู้ที่ปล่อยออกไปทั้งหมด (วงเงินต้น)
+  var loanOut  = S.loans.reduce(function(s,l){return s+(l.amount||0);},0);
+  // หนี้คงค้าง = เฉพาะยอด outstanding ที่ยังไม่ชำระ
+  var debt     = S.loans.filter(function(l){return l.status!=='ชำระครบ';}).reduce(function(s,l){return s+(l.outstanding||0);},0);
   // ค้างชำระ
-  var ov=S.loans.filter(function(l){return l.status==='ค้างชำระ';});
+  var ov = S.loans.filter(function(l){return l.status==='ค้างชำระ';});
 
-  // ══ ยอดคงเหลือจริง ══
+  // เงินสดคงเหลือ
   var totalIn  = saveIn + pf + other + loanIn;
   var totalOut = saveOut + loanOut + expOut;
   var balance  = totalIn - totalOut;
@@ -1663,22 +1663,26 @@ g('showBalanceBtn').addEventListener('click', function(){
   var b = window._bal || {};
 
   // ── 1. เงินสดคงเหลือในธนาคาร ──
-  // รับเข้าทั้งหมด − ถอนหุ้น − รายจ่ายออก − เงินกู้ที่ปล่อยออกไป
   var cash = (b.totalIn||0) - (b.saveOut||0) - (b.expOut||0) - (b.loanOut||0);
 
   // ── 2. กำไรสุทธิ = ดอกเบี้ยรับ + รายได้อื่นๆ − ค่าใช้จ่ายดำเนินงาน ──
   var interestReceived = 0;
   S.transactions.filter(function(t){ return t.type==='ชำระเงินกู้'; }).forEach(function(t){
-    var ln = null;
-    for(var i=0; i<S.loans.length; i++){
-      if(S.loans[i].mid===t.mid){ ln=S.loans[i]; break; }
+    var candidates = S.loans.filter(function(l){ return l.mid===t.mid; });
+    candidates.sort(function(a,b){ return new Date(a.date)-new Date(b.date); });
+    var matchLoan = null;
+    for(var i=candidates.length-1; i>=0; i--){
+      if(!candidates[i].date || new Date(candidates[i].date) <= new Date(t.date)){
+        matchLoan = candidates[i]; break;
+      }
     }
-    if(ln && (ln.rate||0) > 0 && (ln.amount||0) > 0){
-      interestReceived += Math.round((ln.amount*(ln.rate/100))*100)/100;
+    if(!matchLoan && candidates.length) matchLoan = candidates[candidates.length-1];
+    if(matchLoan && (matchLoan.rate||0) > 0 && (matchLoan.amount||0) > 0){
+      interestReceived += Math.round((matchLoan.amount*(matchLoan.rate/100))*100)/100;
     }
   });
   interestReceived = Math.round(interestReceived*100)/100;
-  var opExp = S.expenses.filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; }).reduce(function(s,e){ return s+(e.amount||0); }, 0);
+  var opExp  = S.expenses.filter(function(e){ return e.type==='ค่าใช้จ่ายดำเนินงาน'; }).reduce(function(s,e){ return s+(e.amount||0); }, 0);
   var profit = interestReceived + (b.other||0) - opExp;
 
   var totIn  = b.totalIn  || 0;
@@ -1687,11 +1691,9 @@ g('showBalanceBtn').addEventListener('click', function(){
   // แสดงเงินสด
   var cashEl = g('balCash');
   if(cashEl){ cashEl.textContent = fmt(cash); cashEl.style.color = cash>=0?'var(--g)':'var(--rd)'; }
-
   // แสดงกำไร
   var profEl = g('balProfit');
   if(profEl){ profEl.textContent = fmt(profit); profEl.style.color = profit>=0?'var(--bl)':'var(--rd)'; }
-
   // badge
   var badge = g('balBadge');
   if(badge){
@@ -1699,23 +1701,25 @@ g('showBalanceBtn').addEventListener('click', function(){
     else         { badge.textContent = 'ติดลบ ⚠';    badge.style.background = 'var(--rl)'; badge.style.color = 'var(--rd)'; }
   }
 
-  // รับเข้า
+  // รับเข้า (loanIn แสดงแยก: เงินต้นคืน vs ดอกเบี้ย)
+  var principalBack = (b.loanIn||0) - interestReceived;
   st('balTotalIn', fmt(totIn));
   si('balInRows',
-    balRow('ฝากหุ้น-ออมทรัพย์',    b.saveIn,          '#16a34a') +
-    balRow('PF บุคลากร',            b.pfStaff,         '#16a34a') +
-    balRow('PF โรงเรียน',           b.pfSchool,        '#16a34a') +
-    balRow('รายได้อื่นๆ',            b.other,           '#16a34a') +
-    balRow('รับชำระหนี้จากสมาชิก',  b.loanIn,          '#16a34a') +
-    balRow('  └ ดอกเบี้ยรับ (ประมาณ)', interestReceived, '#2563eb')
+    balRow('ฝากหุ้น-ออมทรัพย์',         b.saveIn,         '#16a34a') +
+    balRow('PF บุคลากร',                 b.pfStaff,        '#16a34a') +
+    balRow('PF โรงเรียน',                b.pfSchool,       '#16a34a') +
+    balRow('รายได้อื่นๆ',                 b.other,          '#16a34a') +
+    balRow('รับชำระหนี้ (ต้น+ดอก)',       b.loanIn,         '#16a34a') +
+    balRow('  └ เงินต้นคืน (ประมาณ)',     Math.max(0,principalBack), '#6b7280') +
+    balRow('  └ ดอกเบี้ยรับ (ประมาณ)',    interestReceived, '#2563eb')
   );
 
   // จ่ายออก
   st('balTotalOut', fmt(totOut));
   si('balOutRows',
-    balRow('ถอนหุ้น-ออมทรัพย์',    b.saveOut,  'var(--rd)') +
-    balRow('เงินกู้ที่ปล่อยออกไป',  b.loanOut,  'var(--rd)') +
-    balRow('รายจ่ายออก/ลงทุน',      b.expOut||0,'var(--rd)')
+    balRow('ถอนหุ้น-ออมทรัพย์',         b.saveOut,   'var(--rd)') +
+    balRow('เงินกู้ที่ปล่อยออกไป (วงเงิน)',b.loanOut,   'var(--rd)') +
+    balRow('รายจ่ายออก/ลงทุน',           b.expOut||0, 'var(--rd)')
   );
 
   var m = g('balanceModal'); if(m) m.style.display = 'flex';
